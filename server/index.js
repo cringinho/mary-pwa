@@ -23,6 +23,10 @@ import canvasRoutes from './routes/canvas.js';
 import telemetryRoutes from './routes/telemetry.js';
 import minigamesRoutes from './routes/minigames.js';
 import cloudRoutes from './routes/cloud.js';
+import billingRoutes from './routes/billing.js';
+import widgetsRoutes from './routes/widgets.js';
+import rewardsRoutes from './routes/rewards.js';
+import adminRoutes from './routes/admin.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -68,12 +72,18 @@ app.use(cookieParser());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// 4. Servir uploads de forma blindada (apenas usuários autenticados)
+// 4. Servir uploads de forma blindada com cache inteligente do navegador (7 dias)
 const uploadsDir = path.resolve(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
-app.use('/api/uploads', requireAuth, express.static(uploadsDir));
+app.use('/api/uploads', requireAuth, express.static(uploadsDir, {
+  maxAge: '7d',
+  immutable: true,
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'private, max-age=604800, immutable');
+  }
+}));
 
 // 5. Rotas da API
 app.get('/api/health', (req, res) => {
@@ -99,6 +109,10 @@ app.use('/api/canvas', canvasRoutes);
 app.use('/api/telemetry', telemetryRoutes);
 app.use('/api/minigames', minigamesRoutes);
 app.use('/api/cloud', cloudRoutes);
+app.use('/api/billing', billingRoutes);
+app.use('/api/widgets', widgetsRoutes);
+app.use('/api/rewards', rewardsRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 6. Servir arquivos estáticos do Vite em Produção com Cache Otimizado
 const clientDistDir = path.resolve(__dirname, '../client/dist');

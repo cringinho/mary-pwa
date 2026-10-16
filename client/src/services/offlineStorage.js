@@ -76,6 +76,15 @@ export async function syncOfflineQueue(onItemSynced) {
 export function initOfflineSync(onItemSynced) {
   if (typeof window === 'undefined') return;
 
+  // Solicitar armazenamento persistente para evitar expurgo de fotos e memórias pelo navegador
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().then((isPersisted) => {
+      if (isPersisted) {
+        console.log('💾 [OfflineSync] Armazenamento persistente garantido pelo navegador!');
+      }
+    }).catch(() => {});
+  }
+
   window.addEventListener('online', () => {
     console.log('🌐 [OfflineSync] Conexão restabelecida! Sincronizando fila...');
     syncOfflineQueue(onItemSynced);

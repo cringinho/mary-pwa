@@ -13,11 +13,13 @@ import {
   Fire, 
   TrendUp,
   ArrowsClockwise,
-  Confetti
+  Confetti,
+  VideoCamera
 } from '@phosphor-icons/react';
 import confetti from 'canvas-confetti';
 import MaryCupidAvatar from './mary/MaryCupidAvatar';
 import CustomQuestionModal from './CustomQuestionModal';
+import TrendVideoGenerator from './TrendVideoGenerator';
 
 export default function CoupleMinigamesView() {
   const [activeTab, setActiveTab] = useState('prefer_dislike'); // 'prefer_dislike' | 'who_would'
@@ -29,6 +31,7 @@ export default function CoupleMinigamesView() {
   const [loading, setLoading] = useState(true);
   const [answering, setAnswering] = useState(false);
   const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
+  const [isVideoGenOpen, setIsVideoGenOpen] = useState(false);
 
   // Carregar categorias
   const fetchCategories = useCallback(async (type) => {
@@ -183,13 +186,24 @@ export default function CoupleMinigamesView() {
           </div>
         </div>
 
-        <button
-          onClick={() => setIsCustomModalOpen(true)}
-          className="py-2 px-3 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 hover:bg-rose-500/25 active:scale-95 transition-all text-xs font-bold flex items-center gap-1.5 shadow"
-        >
-          <PlusCircle className="w-4 h-4" weight="bold" />
-          <span className="hidden sm:inline">Criar Pergunta</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsVideoGenOpen(true)}
+            className="py-2 px-3 rounded-2xl bg-gradient-to-r from-pink-500/20 to-purple-600/20 border border-pink-500/40 text-pink-300 hover:bg-pink-500/30 active:scale-95 transition-all text-xs font-bold flex items-center gap-1.5 shadow"
+            title="Gerar Vídeo de Trend 9:16 para TikTok ou Reels"
+          >
+            <VideoCamera className="w-4 h-4 text-pink-400" weight="bold" />
+            <span className="hidden sm:inline">Vídeo da Trend</span>
+          </button>
+
+          <button
+            onClick={() => setIsCustomModalOpen(true)}
+            className="py-2 px-3 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 hover:bg-rose-500/25 active:scale-95 transition-all text-xs font-bold flex items-center gap-1.5 shadow"
+          >
+            <PlusCircle className="w-4 h-4" weight="bold" />
+            <span className="hidden sm:inline">Criar Pergunta</span>
+          </button>
+        </div>
       </motion.div>
 
       {/* 2. Seletor de Modo de Jogo */}
@@ -438,6 +452,17 @@ export default function CoupleMinigamesView() {
           setCurrentIndex(0);
         }}
       />
+
+      {/* Modal do Gerador de Vídeos da Trend 9:16 */}
+      {isVideoGenOpen && (
+        <TrendVideoGenerator
+          isOpen={isVideoGenOpen}
+          onClose={() => setIsVideoGenOpen(false)}
+          minigameResult={{
+            compatibility: compatibility?.overallCompatibility || 94
+          }}
+        />
+      )}
 
     </div>
   );

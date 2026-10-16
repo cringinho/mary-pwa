@@ -5,6 +5,7 @@ import { Heart, Sparkle, CalendarHeart } from '@phosphor-icons/react';
 import { Settings } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { ZODIAC_LABELS_PT } from '../services/zodiacUtils';
+import MaryCupidAvatar from './mary/MaryCupidAvatar';
 
 export default function CoupleHeader({ onOpenProfile, coupleData: externalCoupleData }) {
   const { user } = useAuth();
@@ -137,16 +138,29 @@ export default function CoupleHeader({ onOpenProfile, coupleData: externalCouple
           </div>
         </div>
 
-        {/* Contador de Tempo */}
-        <div className="flex items-center gap-2 bg-white/5 px-2.5 sm:px-3 py-1.5 rounded-2xl border border-white/10 shadow-sm">
-          <CalendarHeart weight="duotone" className="w-4 h-4 text-pink-400 shrink-0" />
-          <div className="text-right">
-            <div className="text-xs font-bold font-display text-white">
-              {timeTogether.days}d {timeTogether.hours}h {timeTogether.minutes}m
+        {/* Contador de Tempo & Mascote Guardiã Mary */}
+        <div className="flex items-center gap-2">
+          <div 
+            onClick={onOpenProfile} 
+            className="flex items-center gap-2 bg-white/5 hover:bg-white/10 px-2.5 sm:px-3 py-1.5 rounded-2xl border border-white/10 shadow-sm transition-all cursor-pointer"
+            title="Tempo juntos no Nosso Universo"
+          >
+            <CalendarHeart weight="duotone" className="w-4 h-4 text-pink-400 shrink-0" />
+            <div className="text-right">
+              <div className="text-xs font-bold font-display text-white">
+                {timeTogether.days}d {timeTogether.hours}h {timeTogether.minutes}m
+              </div>
+              <div className="text-[9px] text-pink-200/60 uppercase tracking-wider">
+                Juntos no Tempo
+              </div>
             </div>
-            <div className="text-[9px] text-pink-200/60 uppercase tracking-wider">
-              Juntos no Tempo
-            </div>
+          </div>
+
+          <div 
+            className="hidden sm:flex items-center justify-center -ml-1" 
+            title="Anjinha Mary — Guardiã do Casal"
+          >
+            <MaryCupidAvatar state="love" size={38} />
           </div>
         </div>
       </div>

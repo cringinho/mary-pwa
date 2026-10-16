@@ -8,6 +8,11 @@ export const couples = sqliteTable('couples', {
   planTier: text('plan_tier').default('freemium').notNull(),
   planExpiresAt: text('plan_expires_at'),
   enableBibleVerses: integer('enable_bible_verses').default(0).notNull(),
+  storageMode: text('storage_mode').default('internal_cloud').notNull(), // 'internal_cloud' | 'google_drive' | 'hybrid'
+  internalStorageUsedBytes: integer('internal_storage_used_bytes').default(0).notNull(),
+  internalStorageQuotaBytes: integer('internal_storage_quota_bytes').default(157286400).notNull(), // 150MB freemium, 2GB romance, 10GB almas_gemeas
+  cupidCrystals: integer('cupid_crystals').default(50).notNull(),
+  referralCode: text('referral_code'),
   googleDriveFolderId: text('google_drive_folder_id'),
   specialDatesJson: text('special_dates_json'),
   pushSubscriptionsJson: text('push_subscriptions_json'),
@@ -29,6 +34,9 @@ export const users = sqliteTable('users', {
   bio: text('bio'),
   moodStatus: text('mood_status'),
   theme: text('theme').default('dark-romantic').notNull(),
+  termsAcceptedAt: text('terms_accepted_at'),
+  privacyAcceptedAt: text('privacy_accepted_at'),
+  termsVersion: text('terms_version').default('v1.0-2026'),
   updatedAt: text('updated_at').notNull()
 });
 
@@ -222,4 +230,33 @@ export const minigameAnswers = sqliteTable('minigame_answers', {
   createdAt: text('created_at').notNull()
 }, (t) => [
   unique('uniq_couple_user_question_answer').on(t.coupleId, t.userId, t.questionId)
+]);
+
+export const coupleRewards = sqliteTable('couple_rewards', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  coupleId: integer('couple_id').notNull().references(() => couples.id, { onDelete: 'cascade' }),
+  rewardType: text('reward_type').notNull(), // 'crystals' | 'vip_days' | 'sticker_pack'
+  amount: integer('amount').notNull(),
+  reason: text('reason').notNull(),
+  createdAt: text('created_at').notNull()
+});
+
+export const rewardSubmissions = sqliteTable('reward_submissions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  coupleId: integer('couple_id').notNull().references(() => couples.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  platform: text('platform').notNull(), // 'tiktok' | 'reels' | 'shorts' | 'status'
+  postUrl: text('post_url').notNull(),
+  status: text('status').default('approved').notNull(), // 'pending' | 'approved' | 'rejected'
+  rewardGranted: text('reward_granted'),
+  createdAt: text('created_at').notNull()
+});
+
+export const featureUsageStats = sqliteTable('feature_usage_stats', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  featureKey: text('feature_key').notNull(),
+  eventDate: text('event_date').notNull(), // YYYY-MM-DD
+  usageCount: integer('usage_count').default(1).notNull()
+}, (t) => [
+  unique('uniq_feature_date').on(t.featureKey, t.eventDate)
 ]);

@@ -232,13 +232,50 @@ export function initDb(sqlite) {
       created_at TEXT NOT NULL,
       UNIQUE(couple_id, user_id, question_id)
     );
+
+    CREATE TABLE IF NOT EXISTS couple_rewards (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
+      reward_type TEXT NOT NULL,
+      amount INTEGER NOT NULL,
+      reason TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS reward_submissions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      platform TEXT NOT NULL,
+      post_url TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'approved',
+      reward_granted TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS feature_usage_stats (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      feature_key TEXT NOT NULL,
+      event_date TEXT NOT NULL,
+      usage_count INTEGER NOT NULL DEFAULT 1,
+      UNIQUE(feature_key, event_date)
+    );
   `);
 
   // Migrações idempotentes para bancos SQLite pré-existentes
+  ensureColumn(sqlite, 'couples', 'storage_mode', "TEXT NOT NULL DEFAULT 'internal_cloud'");
+  ensureColumn(sqlite, 'couples', 'internal_storage_used_bytes', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn(sqlite, 'couples', 'internal_storage_quota_bytes', 'INTEGER NOT NULL DEFAULT 157286400');
+  ensureColumn(sqlite, 'couples', 'cupid_crystals', 'INTEGER NOT NULL DEFAULT 50');
+  ensureColumn(sqlite, 'couples', 'referral_code', 'TEXT');
+
   ensureColumn(sqlite, 'users', 'couple_id', 'INTEGER DEFAULT 1');
   ensureColumn(sqlite, 'users', 'email', 'TEXT');
   ensureColumn(sqlite, 'users', 'birth_date', 'TEXT');
   ensureColumn(sqlite, 'users', 'zodiac_sign', 'TEXT');
+  ensureColumn(sqlite, 'users', 'terms_accepted_at', 'TEXT');
+  ensureColumn(sqlite, 'users', 'privacy_accepted_at', 'TEXT');
+  ensureColumn(sqlite, 'users', 'terms_version', "TEXT DEFAULT 'v1.0-2026'");
 
   ensureColumn(sqlite, 'memories', 'couple_id', 'INTEGER DEFAULT 1');
   ensureColumn(sqlite, 'memories', 'position_x', 'REAL NOT NULL DEFAULT 0');

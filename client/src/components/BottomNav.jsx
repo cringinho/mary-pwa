@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { House, Images, ShareNetwork, Sparkle, Gear, Planet, SquareHalf, NavigationArrow, GameController } from '@phosphor-icons/react';
+import { House, Images, ShareNetwork, Sparkle, Gear, Planet, SquareHalf, NavigationArrow, GameController, Trophy } from '@phosphor-icons/react';
 
 export const NAV_TABS = [
   { id: 'feed', label: 'Início', icon: House },
@@ -8,9 +8,9 @@ export const NAV_TABS = [
   { id: 'mural', label: 'Mural', icon: SquareHalf },
   { id: 'tracker', label: 'Mapa', icon: NavigationArrow },
   { id: 'minigames', label: 'Jogos', icon: GameController },
+  { id: 'rewards', label: 'Prêmios', icon: Trophy },
   { id: 'gallery', label: 'Fotos', icon: Images },
   { id: 'graph', label: 'Grafo', icon: ShareNetwork },
-  { id: 'recap', label: 'Recap', icon: Sparkle },
   { id: 'settings', label: 'Ajustes', icon: Gear }
 ];
 

@@ -10,7 +10,12 @@ const STATIC_ASSETS = [
   '/icon.svg',
   '/icon-192.png',
   '/icon-512.png',
-  '/badge-72.png'
+  '/badge-72.png',
+  '/assets/mary/mary-welcoming.webp',
+  '/assets/mary/mary-explaining.webp',
+  '/assets/mary/mary-excited.webp',
+  '/assets/mary/mary-love.webp',
+  '/assets/mary/mary-sleeping.webp'
 ];
 
 // Instalação do Service Worker & Pre-cache dos ativos vitais

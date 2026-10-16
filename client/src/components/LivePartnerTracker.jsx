@@ -54,9 +54,10 @@ export default function LivePartnerTracker() {
       zoomControl: false
     });
 
-    // Camada de tiles escura (CartoDB Dark Matter)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    // Camada de tiles escura/voyager com CARTO Basemaps API Key oficial
+    const cartoKey = import.meta.env.VITE_CARTO_API_KEY || 'cb1_4m3d_1_00288d0ac8c2a9be557cf5c6';
+    L.tileLayer(`https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${cartoKey}`, {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>',
       subdomains: 'abcd',
       maxZoom: 19
     }).addTo(map);

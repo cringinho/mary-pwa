@@ -676,7 +676,7 @@ async function runTests() {
     console.log('  ✅ Minigames de Casal (acervo 1.000 questões, respostas e compatibilidade) validados!');
 
     // 29. Testar BYOS Cloud & Exportação de Cofre do Casal (Agente 4)
-    console.log('[29/29] Testando BYOS Cloud & Exportação Portátil do Universo...');
+    console.log('[29/31] Testando BYOS Cloud & Exportação Portátil do Universo...');
     const driveStatusRes = await fetch(`${baseUrl}/api/cloud/drive-status`, { headers: authHeaders });
     assert.equal(driveStatusRes.status, 200);
     const driveStatusJson = await driveStatusRes.json();
@@ -689,12 +689,68 @@ async function runTests() {
     assert.ok(exportVaultJson.memories.length >= 0);
     console.log('  ✅ BYOS Cloud e Exportação Portátil do Universo (.universo) validados com sucesso!');
 
+    // 30. Testar Monetização & Planos SaaS (Agente 5)
+    console.log('[30/31] Testando Sistema de Planos & Assinaturas SaaS...');
+    const planRes = await fetch(`${baseUrl}/api/billing/plan`, { headers: authHeaders });
+    assert.equal(planRes.status, 200);
+    const planJson = await planRes.json();
+    assert.ok(planJson.planTier);
+
+    const upgradeRes = await fetch(`${baseUrl}/api/billing/upgrade`, {
+      method: 'POST',
+      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ planTier: 'almas_gemeas_vip', billingCycle: 'yearly' })
+    });
+    assert.equal(upgradeRes.status, 200);
+    const upgradeJson = await upgradeRes.json();
+    assert.equal(upgradeJson.planTier, 'almas_gemeas');
+    console.log('  ✅ Planos e Upgrades SaaS validados com sucesso!');
+
+    // 31. Testar Feed de Resumo dos Widgets para Android/iOS (Agente 5)
+    console.log('[31/33] Testando API de Widgets Móveis (Resumo do Casal)...');
+    const widgetsRes = await fetch(`${baseUrl}/api/widgets/summary`, { headers: authHeaders });
+    assert.equal(widgetsRes.status, 200);
+    const widgetsJson = await widgetsRes.json();
+    assert.ok(typeof widgetsJson.daysTogether === 'number');
+    assert.ok(widgetsJson.user);
+    console.log('  ✅ API de Widgets de Tela Inicial validada com sucesso!');
+
+    // 32. Testar Catálogo de Recompensas e Missões Virais (Agente 6)
+    console.log('[32/33] Testando Catálogo de Recompensas & Missões de Casal...');
+    const rewardsRes = await fetch(`${baseUrl}/api/rewards/catalog`, { headers: authHeaders });
+    assert.equal(rewardsRes.status, 200);
+    const rewardsJson = await rewardsRes.json();
+    assert.ok(typeof rewardsJson.cupidCrystals === 'number');
+    assert.ok(Array.isArray(rewardsJson.missions));
+
+    const claimRes = await fetch(`${baseUrl}/api/rewards/claim-mission`, {
+      method: 'POST',
+      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ missionId: 'minigame_share' })
+    });
+    assert.equal(claimRes.status, 200);
+    const claimJson = await claimRes.json();
+    assert.ok(claimJson.success);
+    console.log('  ✅ Catálogo e Resgate de Recompensas validados com sucesso!');
+
+    // 33. Testar Métricas e Painel SuperAdmin (Agente 6)
+    console.log('[33/33] Testando Painel SuperAdmin e Telemetria de Métricas...');
+    const adminRes = await fetch(`${baseUrl}/api/admin/metrics`, {
+      headers: { 'x-admin-key': 'mary_super_admin_secret_2026' }
+    });
+    assert.equal(adminRes.status, 200);
+    const adminJson = await adminRes.json();
+    assert.ok(adminJson.overview.totalUsers >= 2);
+    assert.ok(adminJson.storage);
+    assert.ok(adminJson.billing);
+    console.log('  ✅ Painel SuperAdmin e Métricas de Negócio validados com sucesso!');
+
   } finally {
     server.closeAllConnections?.();
     await new Promise((resolve) => server.close(resolve));
   }
 
-  console.log('🎉 TODOS OS 29 TESTES (FUNDAÇÃO + AGENTES 1, 2, 3 E 4) PASSARAM COM 100% DE SUCESSO!');
+  console.log('🎉 TODOS OS 33 TESTES (FUNDAÇÃO + AGENTES 1, 2, 3, 4, 5 E 6) PASSARAM COM 100% DE SUCESSO!');
 }
 
 runTests()

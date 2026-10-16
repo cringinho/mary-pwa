@@ -21,6 +21,9 @@ import MaryOnboardingTour from './components/mary/MaryOnboardingTour';
 import MaryHelpTrigger from './components/mary/MaryHelpTrigger';
 import { MemoryFeedSkeleton } from './components/ShimmerSkeleton';
 import { initOfflineSync } from './services/offlineStorage';
+import AdBannerSlot from './components/AdBannerSlot';
+import RewardsAndTrendsView from './components/RewardsAndTrendsView';
+import AdminDashboardView from './components/AdminDashboardView';
 
 import {
   initSearchEngine, searchMemories, persistMemoriesToCache, loadMemoriesFromCache
@@ -177,6 +180,15 @@ export default function App() {
     );
   }
 
+  const isAdminPath = typeof window !== 'undefined' && (
+    window.location.pathname === '/admin' ||
+    window.location.search.includes('tab=admin')
+  );
+
+  if (isAdminPath) {
+    return <AdminDashboardView onClose={() => { window.location.href = '/'; }} />;
+  }
+
   if (!user) {
     return <LoginView />;
   }
@@ -241,6 +253,12 @@ export default function App() {
               </div>
             </div>
 
+            {/* Banner Publicitário Freemium (Zero intrusive, removido nos planos VIP) */}
+            <AdBannerSlot
+              planTier={coupleData?.couple?.planTier || coupleData?.settings?.planTier || 'freemium'}
+              onUpgradeClick={() => setActiveTab('settings')}
+            />
+
             {/* Lista da Timeline de Relatos com Shimmer Skeletons */}
             {loadingMemories ? (
               <MemoryFeedSkeleton />
@@ -295,6 +313,14 @@ export default function App() {
         {/* ABA: Minigames do Casal (1.000 Questões) */}
         {activeTab === 'minigames' && (
           <CoupleMinigamesView />
+        )}
+
+        {/* ABA: Central de Recompensas & Trends (Agente 6) */}
+        {activeTab === 'rewards' && (
+          <RewardsAndTrendsView
+            coupleData={coupleData}
+            onOpenPricing={() => setActiveTab('settings')}
+          />
         )}
 
         {/* ABA 2: Galeria */}

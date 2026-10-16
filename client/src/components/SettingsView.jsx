@@ -4,12 +4,15 @@ import {
   SlidersHorizontal, Palette, BellRinging, BellSlash, Heart,
   Sparkle, CalendarHeart, Plus, Trash, DownloadSimple,
   SignOut, NotePencil, Check, PaperPlaneTilt, BookOpenText,
-  Copy, Tag, Images, Smiley, PencilSimple, X
+  Copy, Tag, Images, Smiley, PencilSimple, X, Crown, InstagramLogo
 } from '@phosphor-icons/react';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../hooks/useTheme';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import PricingAndPlansModal from './PricingAndPlansModal';
+import SocialShareWrapperModal from './SocialShareWrapperModal';
+import WidgetPreviewSection from './WidgetPreviewSection';
 
 const CUSTOM_COLORS = ['#EC4899', '#F43F5E', '#A855F7', '#38BDF8', '#F59E0B', '#10B981'];
 
@@ -37,6 +40,11 @@ export default function SettingsView({ onOpenProfile, coupleData, onCoupleUpdate
   const [newItemColor, setNewItemColor] = useState('#EC4899');
   const [editingItem, setEditingItem] = useState(null);
   const [editingName, setEditingName] = useState('');
+
+  // Modais de Planos & Social Share
+  const [isPricingOpen, setIsPricingOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [currentPlanTier, setCurrentPlanTier] = useState(coupleData?.couple?.planTier || coupleData?.settings?.planTier || 'freemium');
 
   // Instalação PWA
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -564,6 +572,62 @@ export default function SettingsView({ onOpenProfile, coupleData, onCoupleUpdate
         </div>
       </div>
 
+      {/* CARD: PLANOS & ASSINATURA DO CASAL */}
+      <div className="glass-panel p-5 rounded-3xl border border-pink-500/20 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 rounded-2xl bg-gradient-to-tr from-pink-500/20 to-amber-500/20 border border-amber-400/30 text-amber-300">
+            <Crown size={24} weight="fill" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold font-display text-white flex items-center gap-2">
+              <span>Plano Atual:</span>
+              <span className="capitalize px-2 py-0.5 rounded-full bg-pink-500/20 border border-pink-500/40 text-pink-300 text-xs">
+                {currentPlanTier}
+              </span>
+            </h3>
+            <p className="text-xs text-[var(--text-muted)]">
+              {currentPlanTier === 'almas_gemeas' 
+                ? 'Plano VIP Máximo: todos os recursos liberados para os 2!' 
+                : '1 assinatura desbloqueia tudo para os 2 membros do casal sem pagar em dobro.'}
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setIsPricingOpen(true)}
+          className="w-full sm:w-auto py-2.5 px-5 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 text-white font-bold text-xs uppercase tracking-wider shadow-lg active:scale-95 transition-all shrink-0"
+        >
+          Ver Planos & Benefícios
+        </button>
+      </div>
+
+      {/* CARD: GERADOR DE STORIES HD (SOCIAL WRAPPERS) */}
+      <div className="glass-panel p-5 rounded-3xl border border-pink-500/20 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 rounded-2xl bg-gradient-to-tr from-purple-500/20 to-pink-500/20 border border-pink-400/30 text-pink-300">
+            <InstagramLogo size={24} weight="bold" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold font-display text-white">
+              Social Wrappers para Stories & TikTok
+            </h3>
+            <p className="text-xs text-[var(--text-muted)]">
+              Gere cartões verticais em alta definição prontos para postar no Instagram e WhatsApp!
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setIsShareOpen(true)}
+          className="w-full sm:w-auto py-2.5 px-5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 text-white font-bold text-xs uppercase tracking-wider active:scale-95 transition-all shrink-0"
+        >
+          Criar Story HD 📸
+        </button>
+      </div>
+
+      {/* CARD: PREVIEW DE WIDGETS DE TELA INICIAL */}
+      <WidgetPreviewSection />
+
       {/* CARD 7: AÇÕES DA CONTA */}
       <div className="glass-panel p-5 rounded-3xl border border-pink-500/20 shadow-xl flex flex-col sm:flex-row gap-3">
         <button
@@ -582,6 +646,53 @@ export default function SettingsView({ onOpenProfile, coupleData, onCoupleUpdate
           <span>Encerrar Sessão</span>
         </button>
       </div>
+
+      {/* CARD 8: PRIVACIDADE & EXCLUSÃO DEFINITIVA (LGPD / GOOGLE PLAY) */}
+      <div className="p-4 rounded-3xl bg-red-950/20 border border-red-500/20 text-center space-y-2">
+        <p className="text-[11px] text-gray-400 font-sans">
+          Em conformidade com a LGPD e regras do Google Play Console, você tem total autonomia para apagar permanentemente sua conta e todos os seus registros de nossos servidores a qualquer momento.
+        </p>
+        <button
+          onClick={async () => {
+            if (window.confirm('ATENÇÃO: Deseja realmente excluir permanentemente sua conta e todos os seus dados? Esta ação é irreversível e expurgará todos os seus relatos e fotos.')) {
+              try {
+                const res = await fetch('/api/account/purge', { method: 'DELETE' });
+                if (res.ok) {
+                  alert('Sua conta e dados foram expurgados com sucesso.');
+                  window.location.reload();
+                }
+              } catch (e) {
+                alert('Erro ao excluir conta.');
+              }
+            }
+          }}
+          className="py-2 px-4 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-[11px] font-bold text-red-300 transition-all inline-flex items-center gap-1.5"
+        >
+          <Trash weight="bold" className="w-3.5 h-3.5" />
+          <span>Excluir Minha Conta e Todos os Dados Permanentemente</span>
+        </button>
+      </div>
+
+      {/* MODAIS DE PLANOS E COMPARTILHAMENTO SOCIAL */}
+      {isPricingOpen && (
+        <PricingAndPlansModal
+          isOpen={isPricingOpen}
+          onClose={() => setIsPricingOpen(false)}
+          currentTier={currentPlanTier}
+          onPlanUpgraded={(newTier) => {
+            setCurrentPlanTier(newTier);
+            if (onCoupleUpdated) onCoupleUpdated();
+          }}
+        />
+      )}
+
+      {isShareOpen && (
+        <SocialShareWrapperModal
+          isOpen={isShareOpen}
+          onClose={() => setIsShareOpen(false)}
+          coupleData={coupleData}
+        />
+      )}
     </div>
   );
 }

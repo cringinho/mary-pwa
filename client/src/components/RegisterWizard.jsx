@@ -6,6 +6,7 @@ import {
 } from '@phosphor-icons/react';
 import { useAuth } from '../context/AuthContext';
 import { calculateZodiacSign, ZODIAC_LABELS_PT } from '../services/zodiacUtils';
+import LegalTermsModal from './LegalTermsModal';
 
 export default function RegisterWizard({ onBackToLogin }) {
   const { register } = useAuth();
@@ -18,6 +19,8 @@ export default function RegisterWizard({ onBackToLogin }) {
   const [anniversaryDate, setAnniversaryDate] = useState('2026-01-30');
   const [coupleAction, setCoupleAction] = useState('create'); // 'create' | 'join'
   const [inviteCode, setInviteCode] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
 
@@ -218,6 +221,37 @@ export default function RegisterWizard({ onBackToLogin }) {
           )}
         </div>
 
+        {/* Checkbox Obrigatório LGPD (Item 1 do Agente 6) */}
+        <div className="pt-2">
+          <label className="flex items-start gap-2.5 cursor-pointer text-xs text-gray-300">
+            <input
+              type="checkbox"
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              required
+              className="mt-0.5 rounded border-pink-500/40 text-pink-500 focus:ring-pink-500/20 bg-white/5 cursor-pointer"
+            />
+            <span className="leading-snug">
+              Li e concordo com os{' '}
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(true)}
+                className="text-pink-400 hover:text-pink-300 underline font-semibold inline"
+              >
+                Termos de Uso
+              </button>{' '}
+              e com a{' '}
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(true)}
+                className="text-pink-400 hover:text-pink-300 underline font-semibold inline"
+              >
+                Política de Privacidade (LGPD)
+              </button>.
+            </span>
+          </label>
+        </div>
+
         {formError && (
           <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs text-center font-sans">
             {formError}
@@ -226,13 +260,21 @@ export default function RegisterWizard({ onBackToLogin }) {
 
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || !acceptedTerms}
           className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-pink-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50 font-display"
         >
           <Check weight="bold" className="w-4 h-4" />
           <span>{submitting ? 'Criando Nosso Universo...' : 'Começar Nossa História'}</span>
         </button>
       </form>
+
+      {/* Modal Legal de Termos e Privacidade */}
+      {showTermsModal && (
+        <LegalTermsModal
+          isOpen={showTermsModal}
+          onClose={() => setShowTermsModal(false)}
+        />
+      )}
     </div>
   );
 }

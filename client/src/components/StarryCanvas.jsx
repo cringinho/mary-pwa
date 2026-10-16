@@ -64,13 +64,26 @@ export default function StarryCanvas() {
         ctx.fill();
       }
 
-      animationFrameId = requestAnimationFrame(render);
+      if (!document.hidden) {
+        animationFrameId = requestAnimationFrame(render);
+      }
     }
 
+    function handleVisibilityChange() {
+      if (!document.hidden) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = requestAnimationFrame(render);
+      } else {
+        cancelAnimationFrame(animationFrameId);
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     render();
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       cancelAnimationFrame(animationFrameId);
     };
   }, [theme]);

@@ -164,6 +164,9 @@ router.post('/register', async (req, res) => {
       bio: 'Construindo nosso universo juntos ✨',
       moodStatus: 'Apaixonado(a)',
       theme: 'dark-romantic',
+      termsAcceptedAt: now,
+      privacyAcceptedAt: now,
+      termsVersion: 'v1.0-2026',
       updatedAt: now
     }).run();
 

@@ -151,4 +151,52 @@ router.patch('/', requireAuth, (req, res) => {
   }
 });
 
+/**
+ * DELETE /api/account/purge
+ * Exclusão definitiva de conta e expurgo completo de dados (LGPD & Google Play)
+ */
+router.delete('/purge', requireAuth, (req, res) => {
+  try {
+    const userId = req.user.id;
+    const coupleId = req.user.coupleId || 1;
+
+    // Verificar se há outro membro no casal
+    const otherUsers = sqlite.prepare(`
+      SELECT id FROM users WHERE couple_id = ? AND id != ?
+    `).all(coupleId, userId);
+
+    // Se era o único membro ou casal optou por deletar tudo, remove memórias e arquivos do casal
+    if (otherUsers.length === 0) {
+      sqlite.prepare('DELETE FROM memories WHERE couple_id = ?').run(coupleId);
+      sqlite.prepare('DELETE FROM memory_media WHERE couple_id = ?').run(coupleId);
+      sqlite.prepare('DELETE FROM canvas_items WHERE couple_id = ?').run(coupleId);
+      sqlite.prepare('DELETE FROM daily_feelings WHERE couple_id = ?').run(coupleId);
+      sqlite.prepare('DELETE FROM partner_telemetry WHERE couple_id = ?').run(coupleId);
+      sqlite.prepare('DELETE FROM minigame_answers WHERE couple_id = ?').run(coupleId);
+      sqlite.prepare('DELETE FROM couple_rewards WHERE couple_id = ?').run(coupleId);
+      sqlite.prepare('DELETE FROM reward_submissions WHERE couple_id = ?').run(coupleId);
+      sqlite.prepare('DELETE FROM couples WHERE id = ?').run(coupleId);
+    } else {
+      // Exclui apenas registros criados pelo usuário
+      sqlite.prepare('DELETE FROM memories WHERE author_id = ?').run(userId);
+      sqlite.prepare('DELETE FROM memory_media WHERE uploaded_by = ?').run(userId);
+      sqlite.prepare('DELETE FROM daily_feelings WHERE user_id = ?').run(userId);
+      sqlite.prepare('DELETE FROM partner_telemetry WHERE user_id = ?').run(userId);
+      sqlite.prepare('DELETE FROM minigame_answers WHERE user_id = ?').run(userId);
+    }
+
+    // Exclui o usuário
+    sqlite.prepare('DELETE FROM users WHERE id = ?').run(userId);
+
+    res.clearCookie('token');
+    return res.json({
+      success: true,
+      message: 'Sua conta e seus dados foram expurgados permanentemente com sucesso.'
+    });
+  } catch (err) {
+    console.error('[Profile:Purge] Erro:', err);
+    return res.status(500).json({ error: 'Falha ao expurgar conta e dados.' });
+  }
+});
+
 export default router;
