@@ -19,13 +19,15 @@ export default defineConfig({
     }
   },
   build: {
+    chunkSizeWarningLimit: 800,
     rollupOptions: {
       output: {
         manualChunks: {
           'vendor-react': ['react', 'react-dom'],
           'vendor-flow': ['@xyflow/react'],
           'vendor-motion': ['framer-motion'],
-          'vendor-icons': ['@phosphor-icons/react', 'lucide-react', '@iconify/react']
+          'vendor-icons': ['@phosphor-icons/react', 'lucide-react', '@iconify/react'],
+          'vendor-tiptap': ['@tiptap/react', '@tiptap/starter-kit']
         }
       }
     }

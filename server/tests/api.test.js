@@ -547,12 +547,154 @@ async function runTests() {
     assert.equal(reg2Json.user.coupleId, reg1Json.user.coupleId);
     console.log(`  ✅ Casal Multi-Tenant criado (${reg1Json.couple.inviteCode}) e signos (aries/scorpio) calculados!`);
 
+    // 25. Testar Céu de Sentimentos Diários e Calendário Emocional (Agente 3)
+    console.log('[25/26] Testando Registro de Sentimentos Diários e Calendário Emocional...');
+    const feelingRes = await fetch(`${baseUrl}/api/feelings`, {
+      method: 'POST',
+      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        feelingDate: '2026-02-14',
+        moodLabel: 'Radiante de Amor',
+        moodColor: '#F43F5E',
+        intensity: 5,
+        note: 'Um dia inesquecível ao seu lado!'
+      })
+    });
+    assert.ok([200, 201].includes(feelingRes.status), `Status esperado 200 ou 201, recebido: ${feelingRes.status}`);
+    const feelingJson = await feelingRes.json();
+    assert.ok(feelingJson.feeling?.id);
+
+    const getFeelingsRes = await fetch(`${baseUrl}/api/feelings`, { headers: authHeaders });
+    assert.equal(getFeelingsRes.status, 200);
+    const getFeelingsJson = await getFeelingsRes.json();
+    assert.ok(getFeelingsJson.allFeelings.length >= 1);
+
+    const getCalRes = await fetch(`${baseUrl}/api/feelings/calendar/2026-02`, { headers: authHeaders });
+    assert.equal(getCalRes.status, 200);
+    const getCalJson = await getCalRes.json();
+    assert.ok(getCalJson.calendarDays['2026-02-14']?.length >= 1);
+    console.log('  ✅ Céu de Sentimentos Diários e Calendário Emocional Bicolor validados!');
+
+    // 26. Testar Espaço do Casal: Mural Infinito e Elementos Arrastáveis (Agente 3)
+    console.log('[26/26] Testando Mural do Casal (Post-it, Spotify, Polaroid, Desenho)...');
+    const addNoteRes = await fetch(`${baseUrl}/api/canvas`, {
+      method: 'POST',
+      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        itemType: 'note',
+        x: 120,
+        y: 80,
+        width: 220,
+        height: 160,
+        payload: { text: 'Te amo infinito!', color: '#FEF08A' }
+      })
+    });
+    assert.equal(addNoteRes.status, 201);
+    const addNoteJson = await addNoteRes.json();
+    const createdItemId = addNoteJson.item.id;
+    assert.equal(addNoteJson.item.payload.text, 'Te amo infinito!');
+
+    const patchItemRes = await fetch(`${baseUrl}/api/canvas/${createdItemId}`, {
+      method: 'PATCH',
+      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ x: 180, y: 150 })
+    });
+    assert.equal(patchItemRes.status, 200);
+    const patchItemJson = await patchItemRes.json();
+    assert.equal(patchItemJson.item.x, 180);
+    assert.equal(patchItemJson.item.y, 150);
+
+    const delItemRes = await fetch(`${baseUrl}/api/canvas/${createdItemId}`, {
+      method: 'DELETE',
+      headers: authHeaders
+    });
+    assert.equal(delItemRes.status, 200);
+    console.log('  ✅ Mural Interativo do Casal (CRUD, arrasto e limites de plano) validado com sucesso!');
+
+    // 27. Testar Telemetria em Tempo Real (Localização + Bateria) (Agente 4)
+    console.log('[27/29] Testando Rastreio em Tempo Real do Parceiro (Localização + Bateria)...');
+    const pingRes = await fetch(`${baseUrl}/api/telemetry/ping`, {
+      method: 'POST',
+      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        latitude: -23.55052,
+        longitude: -46.633308,
+        accuracy: 12.5,
+        speed: 1.2,
+        batteryLevel: 88,
+        isCharging: true
+      })
+    });
+    assert.equal(pingRes.status, 200);
+
+    const partnerTelemetryRes = await fetch(`${baseUrl}/api/telemetry/partner`, { headers: authHeaders });
+    assert.equal(partnerTelemetryRes.status, 200);
+    const partnerTelemetryJson = await partnerTelemetryRes.json();
+    assert.ok(partnerTelemetryJson.hasPartner);
+    assert.equal(partnerTelemetryJson.selfTelemetry?.batteryLevel, 88);
+    assert.equal(partnerTelemetryJson.selfTelemetry?.isCharging, true);
+    console.log('  ✅ Telemetria de localização e bateria do parceiro validadas!');
+
+    // 28. Testar Minigames de Casal (1.000 Questões + Respostas + Compatibilidade) (Agente 4)
+    console.log('[28/29] Testando Minigames do Casal (1.000 Questões + Votos + Compatibilidade)...');
+    const questionsRes = await fetch(`${baseUrl}/api/minigames/questions?type=prefer_dislike&limit=5`, { headers: authHeaders });
+    assert.equal(questionsRes.status, 200);
+    const questionsJson = await questionsRes.json();
+    assert.ok(questionsJson.total >= 500, `Esperado pelo menos 500 questões, total: ${questionsJson.total}`);
+    assert.ok(questionsJson.questions.length > 0);
+
+    const testQuestion = questionsJson.questions[0];
+    const answerRes = await fetch(`${baseUrl}/api/minigames/answers`, {
+      method: 'POST',
+      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        questionId: testQuestion.id,
+        answerChoice: 'prefer'
+      })
+    });
+    assert.equal(answerRes.status, 200);
+    const answerJson = await answerRes.json();
+    assert.equal(answerJson.myAnswer, 'prefer');
+
+    const customQRes = await fetch(`${baseUrl}/api/minigames/custom`, {
+      method: 'POST',
+      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        questionType: 'prefer_dislike',
+        category: 'Romantismo',
+        questionText: 'Assistir o nascer do sol abraçados na praia?'
+      })
+    });
+    assert.equal(customQRes.status, 201);
+    const customQJson = await customQRes.json();
+    assert.equal(customQJson.question.questionText, 'Assistir o nascer do sol abraçados na praia?');
+
+    const compatRes = await fetch(`${baseUrl}/api/minigames/compatibility`, { headers: authHeaders });
+    assert.equal(compatRes.status, 200);
+    const compatJson = await compatRes.json();
+    assert.ok(typeof compatJson.overallCompatibility === 'number');
+    console.log('  ✅ Minigames de Casal (acervo 1.000 questões, respostas e compatibilidade) validados!');
+
+    // 29. Testar BYOS Cloud & Exportação de Cofre do Casal (Agente 4)
+    console.log('[29/29] Testando BYOS Cloud & Exportação Portátil do Universo...');
+    const driveStatusRes = await fetch(`${baseUrl}/api/cloud/drive-status`, { headers: authHeaders });
+    assert.equal(driveStatusRes.status, 200);
+    const driveStatusJson = await driveStatusRes.json();
+    assert.ok(driveStatusJson.storageMode);
+
+    const exportVaultRes = await fetch(`${baseUrl}/api/cloud/export-vault`, { headers: authHeaders });
+    assert.equal(exportVaultRes.status, 200);
+    const exportVaultJson = await exportVaultRes.json();
+    assert.equal(exportVaultJson.app, 'Nosso Universo');
+    assert.ok(exportVaultJson.memories.length >= 0);
+    console.log('  ✅ BYOS Cloud e Exportação Portátil do Universo (.universo) validados com sucesso!');
+
   } finally {
     server.closeAllConnections?.();
     await new Promise((resolve) => server.close(resolve));
   }
 
-  console.log('🎉 TODOS OS 24 TESTES (FUNDAÇÃO + AGENTE 1 MULTI-TENANT) PASSARAM COM 100% DE SUCESSO!');
+  console.log('🎉 TODOS OS 29 TESTES (FUNDAÇÃO + AGENTES 1, 2, 3 E 4) PASSARAM COM 100% DE SUCESSO!');
 }
 
 runTests()

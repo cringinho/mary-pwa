@@ -13,6 +13,12 @@ import PhotoGalleryView from './components/PhotoGalleryView';
 import MonthlyRecapView from './components/MonthlyRecapView';
 import RelationshipGraphView from './components/RelationshipGraphView';
 import SettingsView from './components/SettingsView';
+import DailyFeelingsSkyView from './components/DailyFeelingsSkyView';
+import CoupleSpaceCanvas from './components/CoupleSpaceCanvas';
+import LivePartnerTracker from './components/LivePartnerTracker';
+import CoupleMinigamesView from './components/CoupleMinigamesView';
+import MaryOnboardingTour from './components/mary/MaryOnboardingTour';
+import MaryHelpTrigger from './components/mary/MaryHelpTrigger';
 import { MemoryFeedSkeleton } from './components/ShimmerSkeleton';
 import { initOfflineSync } from './services/offlineStorage';
 
@@ -29,6 +35,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('feed');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNewMemoryOpen, setIsNewMemoryOpen] = useState(false);
+  const [isTourOpen, setIsTourOpen] = useState(() => {
+    return !localStorage.getItem('mary_onboarding_shown');
+  });
   const [initialMemoryContent, setInitialMemoryContent] = useState('');
 
   const [coupleData, setCoupleData] = useState(null);
@@ -268,6 +277,26 @@ export default function App() {
           </div>
         )}
 
+        {/* ABA: Céu Estelar de Sentimentos Diários */}
+        {activeTab === 'feelings' && (
+          <DailyFeelingsSkyView coupleData={coupleData} />
+        )}
+
+        {/* ABA: Nosso Mural (Espaço Livre do Casal) */}
+        {activeTab === 'mural' && (
+          <CoupleSpaceCanvas coupleData={coupleData} />
+        )}
+
+        {/* ABA: Rastreio em Tempo Real & Presença */}
+        {activeTab === 'tracker' && (
+          <LivePartnerTracker />
+        )}
+
+        {/* ABA: Minigames do Casal (1.000 Questões) */}
+        {activeTab === 'minigames' && (
+          <CoupleMinigamesView />
+        )}
+
         {/* ABA 2: Galeria */}
         {activeTab === 'gallery' && (
           <PhotoGalleryView onGoToMemory={handleGoToMemory} />
@@ -306,6 +335,17 @@ export default function App() {
         initialContent={initialMemoryContent}
         customMoods={coupleData?.customizations?.moods || []}
         customTags={coupleData?.customizations?.tags || []}
+      />
+
+      {/* Mascote e Guia Oficial Anjinha Mary */}
+      <MaryHelpTrigger onOpenTour={() => setIsTourOpen(true)} />
+      <MaryOnboardingTour
+        isOpen={isTourOpen}
+        onClose={() => {
+          setIsTourOpen(false);
+          localStorage.setItem('mary_onboarding_shown', 'true');
+        }}
+        coupleData={coupleData?.couple || coupleData?.settings}
       />
     </div>
   );

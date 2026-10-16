@@ -4,6 +4,7 @@ import {
   CalendarBlank, Smiley, ShareNetwork, Check, Tag
 } from '@phosphor-icons/react';
 import { Loader2 } from 'lucide-react';
+import RichStoryEditor from './editor/RichStoryEditor';
 
 /**
  * Pré-compressão cliente via HTML5 Canvas para upload ultrarrápido no celular
@@ -69,6 +70,7 @@ export default function NewMemoryModal({
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState(initialContent || '');
+  const [useRichEditor, setUseRichEditor] = useState(true);
   const [memoryDate, setMemoryDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [mood, setMood] = useState(moodOptions[0] || 'Apaixonado(a)');
   const [tagsInput, setTagsInput] = useState('');
@@ -249,15 +251,36 @@ export default function NewMemoryModal({
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold text-gray-300 block mb-1">O que aconteceu? Conte todos os detalhes com carinho...</label>
-            <textarea
-              rows={4}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Escreva aqui sua memória..."
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-xs placeholder-gray-500 focus:outline-none focus:border-pink-500 resize-none font-sans leading-relaxed"
-              required
-            />
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-semibold text-gray-300">
+                O que aconteceu? Conte todos os detalhes com carinho...
+              </label>
+              <button
+                type="button"
+                onClick={() => setUseRichEditor(prev => !prev)}
+                className="text-[11px] text-pink-300 hover:text-pink-200 flex items-center gap-1 font-medium transition-colors"
+              >
+                <Sparkle size={13} weight="fill" />
+                {useRichEditor ? 'Usar Editor Simples' : 'Editor Literário (Tiptap / Wattpad) ✨'}
+              </button>
+            </div>
+
+            {useRichEditor ? (
+              <RichStoryEditor
+                content={content}
+                onChange={(html) => setContent(html)}
+                placeholder="Escreva aqui sua memória, carta ou capítulo de amor..."
+              />
+            ) : (
+              <textarea
+                rows={4}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Escreva aqui sua memória..."
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-xs placeholder-gray-500 focus:outline-none focus:border-pink-500 resize-none font-sans leading-relaxed"
+                required
+              />
+            )}
           </div>
 
           <div>

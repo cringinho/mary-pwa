@@ -1,12 +1,16 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { House, Images, ShareNetwork, Sparkle, Gear } from '@phosphor-icons/react';
+import { House, Images, ShareNetwork, Sparkle, Gear, Planet, SquareHalf, NavigationArrow, GameController } from '@phosphor-icons/react';
 
 export const NAV_TABS = [
-  { id: 'feed', label: 'Início & Feed', icon: House },
-  { id: 'gallery', label: 'Galeria', icon: Images },
-  { id: 'graph', label: 'Grafo & Palavras', icon: ShareNetwork },
-  { id: 'recap', label: 'Recap Mensal', icon: Sparkle },
+  { id: 'feed', label: 'Início', icon: House },
+  { id: 'feelings', label: 'Céu', icon: Planet },
+  { id: 'mural', label: 'Mural', icon: SquareHalf },
+  { id: 'tracker', label: 'Mapa', icon: NavigationArrow },
+  { id: 'minigames', label: 'Jogos', icon: GameController },
+  { id: 'gallery', label: 'Fotos', icon: Images },
+  { id: 'graph', label: 'Grafo', icon: ShareNetwork },
+  { id: 'recap', label: 'Recap', icon: Sparkle },
   { id: 'settings', label: 'Ajustes', icon: Gear }
 ];
 
@@ -22,7 +26,7 @@ export default function BottomNav({ activeTab, onChangeTab }) {
             <button
               key={tab.id}
               onClick={() => onChangeTab(tab.id)}
-              className="relative flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition-all group"
+              className="relative flex flex-col items-center justify-center py-1 px-1.5 sm:px-3 rounded-2xl transition-all group shrink-0"
             >
               {/* Indicador animado de aba ativa via Framer Motion */}
               {isActive && (
@@ -35,7 +39,7 @@ export default function BottomNav({ activeTab, onChangeTab }) {
 
               <Icon
                 weight={isActive ? 'fill' : 'duotone'}
-                className={`w-5 h-5 transition-transform duration-200 ${
+                className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-200 ${
                   isActive
                     ? 'text-pink-400 scale-110 drop-shadow-[0_0_8px_rgba(230,0,103,0.5)]'
                     : 'text-gray-400 group-hover:text-pink-300'
@@ -43,7 +47,7 @@ export default function BottomNav({ activeTab, onChangeTab }) {
               />
 
               <span
-                className={`text-[10px] font-display font-medium mt-1 tracking-tight transition-colors duration-200 ${
+                className={`text-[9px] sm:text-[10px] font-display font-medium mt-0.5 tracking-tight transition-colors duration-200 whitespace-nowrap ${
                   isActive ? 'text-pink-300 font-semibold' : 'text-gray-400 group-hover:text-gray-200'
                 }`}
               >

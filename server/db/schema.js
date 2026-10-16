@@ -184,3 +184,42 @@ export const customQuestions = sqliteTable('custom_questions', {
   text: text('text').notNull(),
   createdAt: text('created_at').notNull()
 });
+
+export const partnerTelemetry = sqliteTable('partner_telemetry', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  coupleId: integer('couple_id').notNull().references(() => couples.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  latitude: real('latitude').notNull(),
+  longitude: real('longitude').notNull(),
+  accuracy: real('accuracy'),
+  speed: real('speed'),
+  batteryLevel: integer('battery_level'),
+  isCharging: integer('is_charging').default(0).notNull(),
+  updatedAt: text('updated_at').notNull()
+}, (t) => [
+  unique('uniq_couple_user_telemetry').on(t.coupleId, t.userId)
+]);
+
+export const minigameQuestions = sqliteTable('minigame_questions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  questionType: text('question_type').notNull(), // 'prefer_dislike' | 'who_would'
+  category: text('category').notNull(),
+  questionText: text('question_text').notNull(),
+  optionA: text('option_a'),
+  optionB: text('option_b'),
+  isCustom: integer('is_custom').default(0).notNull(),
+  coupleId: integer('couple_id').references(() => couples.id, { onDelete: 'cascade' }),
+  createdBy: integer('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: text('created_at').notNull()
+});
+
+export const minigameAnswers = sqliteTable('minigame_answers', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  coupleId: integer('couple_id').notNull().references(() => couples.id, { onDelete: 'cascade' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  questionId: integer('question_id').notNull().references(() => minigameQuestions.id, { onDelete: 'cascade' }),
+  answerChoice: text('answer_choice').notNull(),
+  createdAt: text('created_at').notNull()
+}, (t) => [
+  unique('uniq_couple_user_question_answer').on(t.coupleId, t.userId, t.questionId)
+]);

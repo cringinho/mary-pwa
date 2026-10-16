@@ -1,6 +1,8 @@
 /**
  * Inicialização e migração idempotente das tabelas SQLite (Módulo I + Módulo II Multi-Tenant SaaS)
  */
+import { seedMinigameQuestions } from './seedQuestions.js';
+
 function ensureColumn(sqlite, tableName, columnName, columnDef) {
   const cols = sqlite.prepare(`PRAGMA table_info(${tableName})`).all();
   if (!cols.some((c) => c.name === columnName)) {
@@ -193,6 +195,43 @@ export function initDb(sqlite) {
       text TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS partner_telemetry (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      latitude REAL NOT NULL,
+      longitude REAL NOT NULL,
+      accuracy REAL,
+      speed REAL,
+      battery_level INTEGER,
+      is_charging INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL,
+      UNIQUE(couple_id, user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS minigame_questions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      question_type TEXT NOT NULL,
+      category TEXT NOT NULL,
+      question_text TEXT NOT NULL,
+      option_a TEXT,
+      option_b TEXT,
+      is_custom INTEGER NOT NULL DEFAULT 0,
+      couple_id INTEGER REFERENCES couples(id) ON DELETE CASCADE,
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS minigame_answers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      question_id INTEGER NOT NULL REFERENCES minigame_questions(id) ON DELETE CASCADE,
+      answer_choice TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      UNIQUE(couple_id, user_id, question_id)
+    );
   `);
 
   // Migrações idempotentes para bancos SQLite pré-existentes
@@ -230,6 +269,7 @@ export function initDb(sqlite) {
   }
 
   seedDefaultCustomizationsForCouple(sqlite, 1, now);
+  seedMinigameQuestions(sqlite);
 }
 
 export function seedDefaultCustomizationsForCouple(sqlite, coupleId, now = new Date().toISOString()) {

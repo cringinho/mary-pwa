@@ -18,6 +18,11 @@ import galleryRoutes from './routes/gallery.js';
 import recapRoutes from './routes/recap.js';
 import graphRoutes from './routes/graph.js';
 import pushRoutes from './routes/push.js';
+import feelingsRoutes from './routes/feelings.js';
+import canvasRoutes from './routes/canvas.js';
+import telemetryRoutes from './routes/telemetry.js';
+import minigamesRoutes from './routes/minigames.js';
+import cloudRoutes from './routes/cloud.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -89,6 +94,11 @@ app.use('/api/gallery', galleryRoutes);
 app.use('/api/recap', recapRoutes);
 app.use('/api/graph', graphRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/feelings', feelingsRoutes);
+app.use('/api/canvas', canvasRoutes);
+app.use('/api/telemetry', telemetryRoutes);
+app.use('/api/minigames', minigamesRoutes);
+app.use('/api/cloud', cloudRoutes);
 
 // 6. Servir arquivos estáticos do Vite em Produção com Cache Otimizado
 const clientDistDir = path.resolve(__dirname, '../client/dist');

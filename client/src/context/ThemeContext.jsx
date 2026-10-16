@@ -3,40 +3,40 @@ import { useAuth } from './AuthContext';
 
 export const THEMES = [
   {
-    id: 'dark-romantic',
-    name: 'Dark Romantic',
-    subtitle: 'Rosa Carmesim & Romance Noir',
-    primary: '#E60067',
-    secondary: '#F43F5E',
-    bg: '#0B090E',
+    id: 'aurora-romantica',
+    name: 'Aurora Romântica',
+    subtitle: 'Dark Rubi & Dourado Estelar',
+    primary: '#F43F5E',
+    secondary: '#FBBF24',
+    bg: '#0E0B16',
     icon: 'Heart'
   },
   {
-    id: 'neon-rose',
-    name: 'Neon Rose',
-    subtitle: 'Rosa Néon Vibrante & Glow',
-    primary: '#FF2A85',
-    secondary: '#FF75B5',
-    bg: '#120714',
-    icon: 'Lightning'
+    id: 'solaris-luna',
+    name: 'Solaris & Luna',
+    subtitle: 'Modo Claro Editorial Creme & Terracota (Wattpad)',
+    primary: '#E11D48',
+    secondary: '#D97706',
+    bg: '#FFFDF9',
+    icon: 'Sun'
   },
   {
-    id: 'cyber-goth',
-    name: 'Cyber Goth',
-    subtitle: 'Estética Kuromi, Roxo & Dourado',
-    primary: '#9333EA',
-    secondary: '#C084FC',
-    bg: '#09070F',
-    icon: 'Skull'
+    id: 'cosmos-aveludado',
+    name: 'Cosmos Aveludado',
+    subtitle: 'Índigo Celestial & Azul Nebulosa',
+    primary: '#818CF8',
+    secondary: '#38BDF8',
+    bg: '#060814',
+    icon: 'Planet'
   },
   {
-    id: 'starry-night',
-    name: 'Starry Night',
-    subtitle: 'Estética Cinnamoroll & Azul Astral',
-    primary: '#38BDF8',
-    secondary: '#818CF8',
-    bg: '#070B19',
-    icon: 'MoonStars'
+    id: 'jardim-sakura',
+    name: 'Jardim de Cerejeira',
+    subtitle: 'Sakura Pastel & Folha de Chá',
+    primary: '#FB7185',
+    secondary: '#34D399',
+    bg: '#1A0F16',
+    icon: 'FlowerLotus'
   }
 ];
 
