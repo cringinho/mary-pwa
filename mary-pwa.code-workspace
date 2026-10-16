@@ -1,0 +1,14 @@
+{
+  "folders": [
+    {
+      "name": "Nosso Universo (mary-pwa)",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/node_modules": true,
+      "client/dist": true
+    }
+  }
+}
