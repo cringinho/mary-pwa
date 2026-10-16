@@ -6,7 +6,9 @@ export default function SearchBar({
   onSearchChange,
   activeFilter,
   onFilterChange,
-  totalCount
+  totalCount,
+  meLabel = 'Meus Relatos',
+  partnerLabel = 'Do Meu Amor'
 }) {
   const inputRef = useRef(null);
 
@@ -26,8 +28,8 @@ export default function SearchBar({
     { id: 'all', label: 'Todos', icon: Funnel },
     { id: 'photos', label: 'Com Fotos', icon: Images },
     { id: 'liked', label: 'Curtidos', icon: Heart },
-    { id: 'mary', label: 'Mary', icon: Sparkle },
-    { id: 'leh', label: 'Leh', icon: Lightning }
+    { id: 'me', label: meLabel, icon: Sparkle },
+    { id: 'partner', label: partnerLabel, icon: Lightning }
   ];
 
   return (

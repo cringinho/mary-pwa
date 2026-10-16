@@ -12,10 +12,10 @@ import LightboxModal from './LightboxModal';
 
 const REACTIONS = [
   { id: 'heart', label: 'Amor', icon: Heart, color: '#EC4899' },
-  { id: 'sparkle', label: 'Glitter', icon: Sparkle, color: '#F59E0B' },
-  { id: 'kuromi', label: 'Kuromi', icon: Skull, color: '#9333EA' },
-  { id: 'fire', label: 'Fogo', icon: Fire, color: '#EF4444' },
-  { id: 'emotional', label: 'Emocionada', icon: Drop, color: '#38BDF8' }
+  { id: 'sparkle', label: 'Brilho', icon: Sparkle, color: '#F59E0B' },
+  { id: 'sparkle_heart', label: 'Encanto', icon: Heart, color: '#A855F7' },
+  { id: 'fire', label: 'Paixão', icon: Fire, color: '#EF4444' },
+  { id: 'emotional', label: 'Emoção', icon: Drop, color: '#38BDF8' }
 ];
 
 export default function MemoryCard({ memory, onLike, onDelete, onTagClick, onSelectMemory }) {

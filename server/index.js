@@ -44,10 +44,15 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
+        origin.endsWith('.pyxie.com.br')
+      ) {
         return callback(null, true);
       }
-      return callback(null, true); // Privado em subdomínio seguro
+      return callback(new Error('Origem não autorizada pelo CORS'));
     },
     credentials: true
   })
@@ -69,7 +74,7 @@ app.use('/api/uploads', requireAuth, express.static(uploadsDir));
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    app: 'Nosso Universo — Mary & Leh',
+    app: 'Nosso Universo — Plataforma para Casais',
     port: PORT,
     timestamp: new Date().toISOString()
   });

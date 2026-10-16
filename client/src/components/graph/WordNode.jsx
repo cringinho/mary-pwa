@@ -35,10 +35,10 @@ function WordNode({ data, selected }) {
           : `0 0 16px ${baseColor}66`
       }}
     >
-      <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-pink-400 !border-0" />
-      <Handle type="source" position={Position.Bottom} className="!w-2 !h-2 !bg-pink-400 !border-0" />
-      <Handle type="target" position={Position.Left} className="!w-2 !h-2 !bg-pink-400 !border-0" />
-      <Handle type="source" position={Position.Right} className="!w-2 !h-2 !bg-pink-400 !border-0" />
+      <Handle type="target" position={Position.Top} className="w-3 h-3 !bg-rose-500 !border-0" />
+      <Handle type="source" position={Position.Bottom} className="w-3 h-3 !bg-amber-400 !border-0" />
+      <Handle type="target" position={Position.Left} className="w-2.5 h-2.5 !bg-rose-500 !border-0" />
+      <Handle type="source" position={Position.Right} className="w-2.5 h-2.5 !bg-amber-400 !border-0" />
 
       <div
         className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 shadow-inner"

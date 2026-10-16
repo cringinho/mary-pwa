@@ -63,27 +63,28 @@ router.get('/:yearMonth', requireAuth, (req, res) => {
       return res.status(400).json({ error: 'Formato de mês inválido. Use YYYY-MM.' });
     }
 
+    const coupleId = req.user.coupleId || 1;
     const [year, month] = ym.split('-');
     const monthName = `${MONTH_NAMES[month] || month} de ${year}`;
 
-    const allMemories = db.select().from(memories).all();
+    const allMemories = db.select().from(memories).where(eq(memories.coupleId, coupleId)).all();
     const monthMemories = allMemories.filter(m => m.memoryDate && m.memoryDate.startsWith(ym));
 
-    const allUsers = db.select().from(users).all();
-    const maryUser = allUsers.find(u => u.username === 'mary');
-    const lehUser = allUsers.find(u => u.username === 'leh');
+    const allUsers = db.select().from(users).where(eq(users.coupleId, coupleId)).all();
+    const partnerA = allUsers.find(u => u.username === 'mary') || allUsers[0];
+    const partnerB = allUsers.find(u => u.id !== partnerA?.id) || allUsers[1];
 
-    const maryMemories = monthMemories.filter(m => m.authorId === maryUser?.id).length;
-    const lehMemories = monthMemories.filter(m => m.authorId === lehUser?.id).length;
+    const maryMemories = monthMemories.filter(m => m.authorId === partnerA?.id).length;
+    const lehMemories = monthMemories.filter(m => m.authorId === partnerB?.id).length;
 
-    const allMedia = db.select().from(memoryMedia).all();
+    const allMedia = db.select().from(memoryMedia).where(eq(memoryMedia.coupleId, coupleId)).all();
     const monthMedia = allMedia.filter(m => (m.takenAt && m.takenAt.startsWith(ym)) || (m.createdAt && m.createdAt.startsWith(ym)));
 
     const monthMemIds = new Set(monthMemories.map(m => m.id));
     const allLikes = db.select().from(memoryLikes).all();
     const monthLikes = allLikes.filter(l => monthMemIds.has(l.memoryId));
 
-    const allWords = db.select().from(wordNodes).all();
+    const allWords = db.select().from(wordNodes).where(eq(wordNodes.coupleId, coupleId)).all();
     const fullText = monthMemories.map(m => `${m.title} ${m.content}`).join(' ').toLowerCase();
 
     const wordCounts = allWords.map(w => {

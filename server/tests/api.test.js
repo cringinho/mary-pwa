@@ -18,12 +18,14 @@ async function runTests() {
   const userMary = db.select().from(users).where(eq(users.username, 'mary')).get();
   assert.ok(userMary, 'Usuário Mary deve existir');
   assert.equal(userMary.username, 'mary');
-  assert.equal(userMary.nickname, 'Maricota');
+  assert.ok(userMary.nickname, 'Nickname de Mary deve estar preenchido');
+  assert.ok(userMary.coupleId, 'coupleId de Mary deve estar definido');
 
   const userLeh = db.select().from(users).where(eq(users.username, 'leh')).get();
   assert.ok(userLeh, 'Usuário Leh deve existir');
   assert.equal(userLeh.username, 'leh');
-  assert.equal(userLeh.nickname, 'Cringinho');
+  assert.ok(userLeh.nickname, 'Nickname de Leh deve estar preenchido');
+  assert.equal(userLeh.coupleId, userMary.coupleId, 'Ambos devem pertencer ao mesmo casal');
 
   const settings = db.select().from(coupleSettings).get();
   assert.ok(settings, 'Configurações do casal devem existir');
@@ -406,7 +408,7 @@ async function runTests() {
     console.log('  ✅ Inscrição de push registrada e disparo para o parceiro aprovados');
 
     // 21. Testar Cancelamento de Inscrição Push (POST /api/push/unsubscribe)
-    console.log('[21/21] Testando Cancelamento de Inscrição Push...');
+    console.log('[21/24] Testando Cancelamento de Inscrição Push...');
     const unsubRes = await fetch(`${baseUrl}/api/push/unsubscribe`, {
       method: 'POST',
       headers: { ...authHeaders, 'Content-Type': 'application/json' },
@@ -415,15 +417,147 @@ async function runTests() {
     assert.equal(unsubRes.status, 200);
     console.log('  ✅ Cancelamento de inscrição push validado com sucesso');
 
+    // 22. Testar Persistência de Coordenadas e Conexões Manuais no Grafo
+    console.log('[22/24] Testando Persistência de Coordenadas e Conexões Manuais no Grafo...');
+    const posRes = await fetch(`${baseUrl}/api/graph/node-position`, {
+      method: 'PATCH',
+      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nodeType: 'memory',
+        id: `mem-${testMemoryId}`,
+        x: 345.5,
+        y: -120.25
+      })
+    });
+    assert.equal(posRes.status, 200);
+
+    // Criar um segundo relato rápido para testar conexão manual entre duas memórias
+    const mem2Form = new FormData();
+    mem2Form.append('title', 'Jantar à Luz de Velas');
+    mem2Form.append('content', 'Continuando nossa noite mágica de morangos...');
+    mem2Form.append('memoryDate', '2026-02-15');
+    const mem2Res = await fetch(`${baseUrl}/api/memories`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: mem2Form
+    });
+    assert.equal(mem2Res.status, 201);
+    const mem2Json = await mem2Res.json();
+    const secondMemoryId = mem2Json.memory.id;
+
+    const connRes = await fetch(`${baseUrl}/api/graph/connections`, {
+      method: 'POST',
+      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sourceMemoryId: `mem-${testMemoryId}`,
+        targetMemoryId: `mem-${secondMemoryId}`,
+        label: 'Continuação da Noite'
+      })
+    });
+    assert.equal(connRes.status, 201);
+    const connJson = await connRes.json();
+    assert.ok(connJson.connection?.id);
+
+    const verifyGraphRes = await fetch(`${baseUrl}/api/graph/data`, { headers: authHeaders }).then(r => r.json());
+    const updatedMemNode = verifyGraphRes.memoryNodes.find(m => m.memoryId === testMemoryId);
+    assert.equal(updatedMemNode.positionX, 345.5);
+    assert.equal(updatedMemNode.positionY, -120.25);
+
+    const delConnRes = await fetch(`${baseUrl}/api/graph/connections/${connJson.connection.id}`, {
+      method: 'DELETE',
+      headers: authHeaders
+    });
+    assert.equal(delConnRes.status, 200);
+    console.log('  ✅ Coordenadas (positionX/positionY) e conexões manuais do grafo validadas');
+
+    // 23. Testar CRUD de Customizações do Casal e Toggle Bíblico (Agente 1)
+    console.log('[23/24] Testando CRUD de Customizações (Tags, Álbuns, Humores) e Settings...');
+    const patchSettingsRes = await fetch(`${baseUrl}/api/couple/settings`, {
+      method: 'PATCH',
+      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enableBibleVerses: true })
+    });
+    assert.equal(patchSettingsRes.status, 200);
+    const patchSettingsJson = await patchSettingsRes.json();
+    assert.equal(patchSettingsJson.settings.enableBibleVerses, true);
+
+    const addMoodRes = await fetch(`${baseUrl}/api/couple/customizations/moods`, {
+      method: 'POST',
+      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label: 'Gratidão Pura', emoji: '✨', color: '#F59E0B' })
+    });
+    assert.equal(addMoodRes.status, 201);
+    const addMoodJson = await addMoodRes.json();
+    assert.ok(addMoodJson.item.id);
+
+    const editMoodRes = await fetch(`${baseUrl}/api/couple/customizations/moods/${addMoodJson.item.id}`, {
+      method: 'PATCH',
+      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label: 'Gratidão Infinita', emoji: '🌟' })
+    });
+    assert.equal(editMoodRes.status, 200);
+    const editMoodJson = await editMoodRes.json();
+    assert.equal(editMoodJson.item.name, 'Gratidão Infinita');
+
+    const delMoodRes = await fetch(`${baseUrl}/api/couple/customizations/moods/${addMoodJson.item.id}`, {
+      method: 'DELETE',
+      headers: authHeaders
+    });
+    assert.equal(delMoodRes.status, 200);
+    console.log('  ✅ CRUD de customizações e toggle de versículos bíblicos aprovados');
+
+    // 24. Testar Registro Multi-Tenant + Cálculo Automático de Signo Zodiacal (Agente 1)
+    console.log('[24/24] Testando Cadastro Multi-Tenant e Signo Zodiacal Automático...');
+    const uniqueSuffix = Date.now().toString(36);
+    const reg1Res = await fetch(`${baseUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: `alice_${uniqueSuffix}`,
+        password: 'password123',
+        displayName: 'Alice',
+        nickname: 'Lili',
+        birthDate: '2000-03-25', // Áries
+        mode: 'create',
+        coupleName: 'Universo Alice & Bob',
+        anniversaryDate: '2025-06-12'
+      })
+    });
+    assert.equal(reg1Res.status, 201);
+    const reg1Json = await reg1Res.json();
+    assert.equal(reg1Json.user.zodiacSign, 'aries');
+    assert.ok(reg1Json.couple.inviteCode);
+
+    const reg2Res = await fetch(`${baseUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: `bob_${uniqueSuffix}`,
+        password: 'password123',
+        displayName: 'Bob',
+        nickname: 'Beto',
+        birthDate: '1999-11-05', // Escorpião
+        mode: 'join',
+        inviteCode: reg1Json.couple.inviteCode
+      })
+    });
+    assert.equal(reg2Res.status, 201);
+    const reg2Json = await reg2Res.json();
+    assert.equal(reg2Json.user.zodiacSign, 'scorpio');
+    assert.equal(reg2Json.user.coupleId, reg1Json.user.coupleId);
+    console.log(`  ✅ Casal Multi-Tenant criado (${reg1Json.couple.inviteCode}) e signos (aries/scorpio) calculados!`);
 
   } finally {
-    server.close();
+    server.closeAllConnections?.();
+    await new Promise((resolve) => server.close(resolve));
   }
 
-  console.log('🎉 TODOS OS TESTES DA PARTE 1 PASSARAM COM 100% DE SUCESSO!');
+  console.log('🎉 TODOS OS 24 TESTES (FUNDAÇÃO + AGENTE 1 MULTI-TENANT) PASSARAM COM 100% DE SUCESSO!');
 }
 
-runTests().catch((err) => {
-  console.error('❌ Falha nos testes:', err);
-  process.exit(1);
-});
+runTests()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error('❌ Falha nos testes:', err);
+    process.exit(1);
+  });

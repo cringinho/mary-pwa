@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@iconify/react": "^6.0.2",
     "@phosphor-icons/react": "^2.1.7",
     "@xyflow/react": "^12.4.4",
     "canvas-confetti": "^1.9.4",

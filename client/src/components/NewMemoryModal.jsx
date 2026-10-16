@@ -47,29 +47,13 @@ async function compressImageClientSide(file, maxDimension = 1800, quality = 0.88
   });
 }
 
-const MOODS = [
-'Exaustão',
-  'Ansiedade',
-  'Irritação',
-  'Sobrecarga',
-  'Derrota',
-  'Apatia',
-  'Esgotamento',
-  'Frustração',
-  'Tédio',
-  'Surto',
-  'Paranoia',
-  'Sono',
-  'Confusão',
-  'Impaciência',
-  'Vazio',
-  'Desorientação',
-  'Estresse',
-  'Paralisia',
-  'Incômodo',
-  'Pânico',
-  'Pavor',
-  'Caos'
+const DEFAULT_MOODS = [
+  'Apaixonado(a)',
+  'Radiante',
+  'Acolhido(a)',
+  'Com Saudade',
+  'Grato(a)',
+  'Nostálgico(a)'
 ];
 
 export default function NewMemoryModal({
@@ -77,12 +61,16 @@ export default function NewMemoryModal({
   onClose,
   onCreated,
   existingMemories = [],
-  initialContent = ''
+  initialContent = '',
+  customMoods = [],
+  customTags = []
 }) {
+  const moodOptions = customMoods.length > 0 ? customMoods.map(m => m.name) : DEFAULT_MOODS;
+
   const [title, setTitle] = useState('');
   const [content, setContent] = useState(initialContent || '');
   const [memoryDate, setMemoryDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [mood, setMood] = useState(MOODS[0]);
+  const [mood, setMood] = useState(moodOptions[0] || 'Apaixonado(a)');
   const [tagsInput, setTagsInput] = useState('');
   const [location, setLocation] = useState('');
   const [isCapsule, setIsCapsule] = useState(false);
@@ -245,7 +233,7 @@ export default function NewMemoryModal({
               Sentimento / Humor
             </label>
             <div className="flex flex-wrap gap-1.5">
-              {MOODS.map((m) => (
+              {moodOptions.map((m) => (
                 <button
                   key={m}
                   type="button"
@@ -325,6 +313,25 @@ export default function NewMemoryModal({
               placeholder="Ex: viagem, encontro, promessas, risadas"
               className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs placeholder-gray-500 focus:outline-none focus:border-pink-500 font-sans"
             />
+            {customTags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-1.5">
+                {customTags.map((t) => (
+                  <button
+                    key={t.id || t.name}
+                    type="button"
+                    onClick={() => {
+                      const current = tagsInput.split(',').map(s => s.trim()).filter(Boolean);
+                      if (!current.includes(t.name)) {
+                        setTagsInput([...current, t.name].join(', '));
+                      }
+                    }}
+                    className="px-2 py-0.5 rounded-lg text-[10px] font-sans bg-white/5 hover:bg-pink-500/20 text-pink-200 border border-white/10"
+                  >
+                    +#{t.name}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Conexão com outra memória */}

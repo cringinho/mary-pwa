@@ -50,3 +50,4 @@ pm2 start ecosystem.config.cjs --update-env
 pm2 save
 
 echo "✅ mary-pwa rodando de forma 100% independente em ${APP_DIR} (Porta 3001 -> https://mary.pyxie.com.br)!"
+

@@ -37,13 +37,69 @@ const upload = multer({
 const router = express.Router();
 
 /**
+ * Normalizador Único de DTO de Memórias (Correção Definitiva do Bug 1 - Tela Preta)
+ * Garante estrutura idêntica em GET, POST e PUT para nunca quebrar .map() no React/IndexedDB/MiniSearch
+ */
+export function normalizeMemoryDTO(rawMemory, mediaList = [], likesList = [], connectionsList = [], authorObj = null) {
+  const now = new Date();
+  const isCapsuleBool = Boolean(rawMemory.isCapsule);
+  const isLocked = isCapsuleBool && Boolean(rawMemory.unlockAt) && new Date(rawMemory.unlockAt) > now;
+
+  let safeTags = [];
+  if (Array.isArray(rawMemory.tags)) {
+    safeTags = rawMemory.tags.map(t => String(t).trim()).filter(Boolean);
+  } else if (typeof rawMemory.tags === 'string' && rawMemory.tags.trim()) {
+    try {
+      const parsed = JSON.parse(rawMemory.tags);
+      safeTags = Array.isArray(parsed)
+        ? parsed.map(t => String(t).trim()).filter(Boolean)
+        : rawMemory.tags.split(',').map(s => s.trim()).filter(Boolean);
+    } catch (e) {
+      safeTags = rawMemory.tags.split(',').map(s => s.trim()).filter(Boolean);
+    }
+  }
+
+  const safeMedia = Array.isArray(mediaList) ? mediaList : [];
+  const safeLikes = Array.isArray(likesList) ? likesList : [];
+  const safeConnections = Array.isArray(connectionsList) ? connectionsList : [];
+
+  return {
+    id: Number(rawMemory.id),
+    coupleId: Number(rawMemory.coupleId || 1),
+    authorId: Number(rawMemory.authorId),
+    author: authorObj || { displayName: 'Autor', nickname: '' },
+    title: String(rawMemory.title || ''),
+    content: isLocked
+      ? `🔒 Esta cápsula do tempo está selada com amor e só será aberta em ${new Date(rawMemory.unlockAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}.`
+      : String(rawMemory.content || ''),
+    memoryDate: String(rawMemory.memoryDate || ''),
+    mood: rawMemory.mood || null,
+    tags: safeTags,
+    location: rawMemory.location || null,
+    isCapsule: isCapsuleBool,
+    unlockAt: rawMemory.unlockAt || null,
+    isLocked,
+    positionX: Number(rawMemory.positionX || 0),
+    positionY: Number(rawMemory.positionY || 0),
+    createdAt: rawMemory.createdAt,
+    updatedAt: rawMemory.updatedAt,
+    media: isLocked ? [] : safeMedia,
+    likes: safeLikes,
+    connectionsCount: safeConnections.length,
+    connections: safeConnections
+  };
+}
+
+/**
  * GET /api/memories
- * Lista relatos com imagens, likes/reações, conexões do grafo e guarda de Cápsula do Tempo
+ * Lista relatos do casal com imagens, likes/reações, conexões do grafo e guarda de Cápsula do Tempo
  */
 router.get('/', requireAuth, async (req, res) => {
   try {
+    const coupleId = req.user.coupleId || 1;
     const rawMemories = db.select()
       .from(memories)
+      .where(eq(memories.coupleId, coupleId))
       .orderBy(desc(memories.memoryDate), desc(memories.id))
       .all();
 
@@ -84,7 +140,6 @@ router.get('/', requireAuth, async (req, res) => {
 
     const allUsers = db.select().from(users).all();
     const userMap = new Map(allUsers.map(u => [u.id, sanitizeUser(u)]));
-    const now = new Date();
 
     const formatted = rawMemories.map((m) => {
       const author = userMap.get(m.authorId) || { displayName: 'Desconhecido', nickname: '' };
@@ -92,37 +147,7 @@ router.get('/', requireAuth, async (req, res) => {
       const likesList = allLikes.filter(l => l.memoryId === m.id);
       const connectionsList = allConnections.filter(c => c.sourceMemoryId === m.id || c.targetMemoryId === m.id);
 
-      const isLocked = Boolean(m.isCapsule) && m.unlockAt && new Date(m.unlockAt) > now;
-
-      let safeTags = [];
-      try {
-        safeTags = m.tags ? JSON.parse(m.tags) : [];
-      } catch (e) {
-        safeTags = typeof m.tags === 'string' ? m.tags.split(',').map(s => s.trim()) : [];
-      }
-
-      return {
-        id: m.id,
-        authorId: m.authorId,
-        author,
-        title: m.title,
-        content: isLocked
-          ? `🔒 Esta cápsula do tempo está selada com amor e só será aberta em ${new Date(m.unlockAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}.`
-          : m.content,
-        memoryDate: m.memoryDate,
-        mood: m.mood,
-        tags: safeTags,
-        location: m.location,
-        isCapsule: Boolean(m.isCapsule),
-        unlockAt: m.unlockAt,
-        isLocked,
-        createdAt: m.createdAt,
-        updatedAt: m.updatedAt,
-        media: isLocked ? [] : mediaList,
-        likes: likesList,
-        connectionsCount: connectionsList.length,
-        connections: connectionsList
-      };
+      return normalizeMemoryDTO(m, mediaList, likesList, connectionsList, author);
     });
 
     return res.json({ success: true, memories: formatted });
@@ -134,10 +159,11 @@ router.get('/', requireAuth, async (req, res) => {
 
 /**
  * POST /api/memories
- * Cria relato com upload múltiplo de imagens comprimidas com Sharp (.webp)
+ * Cria relato com upload múltiplo de imagens comprimidas com Sharp (.webp) e retorna DTO normalizado
  */
 router.post('/', requireAuth, upload.array('images', 10), async (req, res) => {
   try {
+    const coupleId = req.user.coupleId || 1;
     const {
       title,
       content,
@@ -171,6 +197,7 @@ router.post('/', requireAuth, upload.array('images', 10), async (req, res) => {
 
     // 1. Inserir relato
     const insertResult = db.insert(memories).values({
+      coupleId,
       authorId: req.user.id,
       title: String(title).trim(),
       content: String(content).trim(),
@@ -180,6 +207,8 @@ router.post('/', requireAuth, upload.array('images', 10), async (req, res) => {
       location: location ? String(location).trim() : null,
       isCapsule: isCapsule === 'true' || isCapsule === true || isCapsule === 1 ? 1 : 0,
       unlockAt: unlockAt ? String(unlockAt).trim() : null,
+      positionX: 0,
+      positionY: 0,
       createdAt: now,
       updatedAt: now
     }).run();
@@ -213,6 +242,7 @@ router.post('/', requireAuth, upload.array('images', 10), async (req, res) => {
           .toFile(thumbPath);
 
         const mediaInsert = db.insert(memoryMedia).values({
+          coupleId,
           memoryId,
           uploadedBy: req.user.id,
           albumName: 'Relatos',
@@ -226,15 +256,16 @@ router.post('/', requireAuth, upload.array('images', 10), async (req, res) => {
           createdAt: now
         }).run();
 
-        savedMedia.push({
-          id: Number(mediaInsert.lastInsertRowid),
-          fileUrl: `/api/uploads/memories/${mainFilename}`,
-          thumbUrl: `/api/uploads/memories/thumbs/${thumbFilename}`
-        });
+        const createdMediaRow = db.select()
+          .from(memoryMedia)
+          .where(eq(memoryMedia.id, Number(mediaInsert.lastInsertRowid)))
+          .get();
+        if (createdMediaRow) savedMedia.push(createdMediaRow);
       }
     }
 
     // 3. Vincular memórias conectadas
+    const savedConnections = [];
     if (connectedMemoryIds) {
       let ids = [];
       try {
@@ -245,12 +276,17 @@ router.post('/', requireAuth, upload.array('images', 10), async (req, res) => {
 
       for (const targetId of ids) {
         if (targetId && Number(targetId) !== memoryId) {
-          db.insert(memoryConnections).values({
+          const connInsert = db.insert(memoryConnections).values({
             sourceMemoryId: memoryId,
             targetMemoryId: Number(targetId),
             label: 'Conectado',
             createdAt: now
           }).run();
+          const createdConn = db.select()
+            .from(memoryConnections)
+            .where(eq(memoryConnections.id, Number(connInsert.lastInsertRowid)))
+            .get();
+          if (createdConn) savedConnections.push(createdConn);
         }
       }
     }
@@ -271,11 +307,14 @@ router.post('/', requireAuth, upload.array('images', 10), async (req, res) => {
           const exists = db.select().from(wordNodes).where(eq(wordNodes.normalizedWord, norm)).get();
           if (!exists) {
             db.insert(wordNodes).values({
+              coupleId,
               word: clean,
               normalizedWord: norm,
               meaningOrNote: `Criada no relato "${title}"`,
               color: '#EC4899',
               iconName: 'Sparkles',
+              positionX: 0,
+              positionY: 0,
               createdBy: req.user.id,
               isCustom: 1,
               createdAt: now
@@ -286,6 +325,7 @@ router.post('/', requireAuth, upload.array('images', 10), async (req, res) => {
     }
 
     const created = db.select().from(memories).where(eq(memories.id, memoryId)).get();
+
     // Dispara notificação push para o parceiro
     sendPushToPartner(req.user.id, {
       title: '💌 Nova Memória no Universo!',
@@ -293,30 +333,87 @@ router.post('/', requireAuth, upload.array('images', 10), async (req, res) => {
       url: '/?tab=feed'
     }).catch(() => null);
 
-
-    let returnedTags = [];
-    try {
-      returnedTags = JSON.parse(parsedTags);
-    } catch (e) {
-      returnedTags = [];
-    }
+    const normalizedMemory = normalizeMemoryDTO(
+      created,
+      savedMedia,
+      [],
+      savedConnections,
+      sanitizeUser(req.user)
+    );
 
     return res.status(201).json({
       success: true,
       message: 'Relato gravado no Universo com sucesso! ✨',
-      memory: {
-        ...created,
-        tags: returnedTags,
-        media: savedMedia,
-        author: sanitizeUser(req.user),
-        likes: [],
-        connectionsCount: 0,
-        connections: []
-      }
+      memory: normalizedMemory
     });
   } catch (err) {
     console.error('[Memories:Create] Erro ao criar relato:', err);
     return res.status(500).json({ error: err.message || 'Falha ao salvar relato.' });
+  }
+});
+
+/**
+ * PUT /api/memories/:id
+ * Atualiza um relato existente e retorna o DTO normalizado
+ */
+router.put('/:id', requireAuth, (req, res) => {
+  try {
+    const memoryId = Number(req.params.id);
+    const existing = db.select().from(memories).where(eq(memories.id, memoryId)).get();
+    if (!existing) {
+      return res.status(404).json({ error: 'Relato não encontrado.' });
+    }
+
+    const { title, content, memoryDate, mood, tags, location } = req.body;
+    const now = new Date().toISOString();
+
+    const updates = { updatedAt: now };
+    if (typeof title === 'string' && title.trim()) updates.title = title.trim();
+    if (typeof content === 'string' && content.trim()) updates.content = content.trim();
+    if (typeof memoryDate === 'string' && memoryDate.trim()) updates.memoryDate = memoryDate.trim();
+    if (typeof mood !== 'undefined') updates.mood = mood ? String(mood).trim() : null;
+    if (typeof location !== 'undefined') updates.location = location ? String(location).trim() : null;
+    if (typeof tags !== 'undefined') {
+      updates.tags = Array.isArray(tags) ? JSON.stringify(tags) : String(tags);
+    }
+
+    db.update(memories).set(updates).where(eq(memories.id, memoryId)).run();
+
+    const updated = db.select().from(memories).where(eq(memories.id, memoryId)).get();
+    const mediaList = db.select().from(memoryMedia).where(eq(memoryMedia.memoryId, memoryId)).all();
+    const likesList = db.select({
+      id: memoryLikes.id,
+      memoryId: memoryLikes.memoryId,
+      userId: memoryLikes.userId,
+      reaction: memoryLikes.reaction,
+      createdAt: memoryLikes.createdAt,
+      username: users.username,
+      displayName: users.displayName,
+      nickname: users.nickname,
+      avatarUrl: users.avatarUrl
+    })
+      .from(memoryLikes)
+      .leftJoin(users, eq(memoryLikes.userId, users.id))
+      .where(eq(memoryLikes.memoryId, memoryId))
+      .all();
+
+    const connectionsList = db.select()
+      .from(memoryConnections)
+      .where(or(
+        eq(memoryConnections.sourceMemoryId, memoryId),
+        eq(memoryConnections.targetMemoryId, memoryId)
+      ))
+      .all();
+
+    const author = db.select().from(users).where(eq(users.id, updated.authorId)).get();
+
+    return res.json({
+      success: true,
+      memory: normalizeMemoryDTO(updated, mediaList, likesList, connectionsList, sanitizeUser(author))
+    });
+  } catch (err) {
+    console.error('[Memories:Update] Erro:', err);
+    return res.status(500).json({ error: 'Falha ao atualizar relato.' });
   }
 });
 
@@ -330,7 +427,7 @@ router.post('/:id/like', requireAuth, (req, res) => {
     const userId = req.user.id;
     const { reaction = 'heart' } = req.body;
 
-    const validReactions = ['heart', 'sparkle', 'kuromi', 'fire', 'emotional'];
+    const validReactions = ['heart', 'sparkle', 'sparkle_heart', 'kuromi', 'fire', 'emotional'];
     const chosenReaction = validReactions.includes(reaction) ? reaction : 'heart';
 
     const existingLike = db.select()
@@ -343,11 +440,9 @@ router.post('/:id/like', requireAuth, (req, res) => {
 
     if (existingLike) {
       if (existingLike.reaction === chosenReaction) {
-        // Mesmo like -> remove (toggle)
         db.delete(memoryLikes).where(eq(memoryLikes.id, existingLike.id)).run();
         action = 'removed';
       } else {
-        // Reação diferente -> atualiza
         db.update(memoryLikes)
           .set({ reaction: chosenReaction })
           .where(eq(memoryLikes.id, existingLike.id))
@@ -379,7 +474,6 @@ router.post('/:id/like', requireAuth, (req, res) => {
       .where(eq(memoryLikes.memoryId, memoryId))
       .all();
 
-    // Dispara push para o autor da memória caso seja uma reação positiva
     if (action === 'added' || action === 'updated') {
       const memoryItem = db.select().from(memories).where(eq(memories.id, memoryId)).get();
       if (memoryItem && memoryItem.authorId !== req.user.id) {

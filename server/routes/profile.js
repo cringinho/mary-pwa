@@ -8,6 +8,7 @@ import { db } from '../db/index.js';
 import { users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { requireAuth, sanitizeUser } from '../middlewares/auth.js';
+import { calculateZodiacSign } from '../utils/zodiac.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -106,7 +107,7 @@ router.post('/avatar', requireAuth, upload.single('avatar'), async (req, res) =>
 router.patch('/', requireAuth, (req, res) => {
   try {
     const currentUserId = req.user.id;
-    const { displayName, nickname, bio, moodStatus, theme, bannerColor } = req.body;
+    const { displayName, nickname, bio, moodStatus, theme, bannerColor, birthDate } = req.body;
 
     const updates = {
       updatedAt: new Date().toISOString()
@@ -129,6 +130,10 @@ router.patch('/', requireAuth, (req, res) => {
     }
     if (typeof bannerColor === 'string') {
       updates.bannerColor = bannerColor.trim().slice(0, 20);
+    }
+    if (typeof birthDate === 'string' && birthDate.trim()) {
+      updates.birthDate = birthDate.trim();
+      updates.zodiacSign = calculateZodiacSign(birthDate.trim());
     }
 
     db.update(users).set(updates).where(eq(users.id, currentUserId)).run();

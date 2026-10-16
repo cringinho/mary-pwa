@@ -17,5 +17,17 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src')
     }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-flow': ['@xyflow/react'],
+          'vendor-motion': ['framer-motion'],
+          'vendor-icons': ['@phosphor-icons/react', 'lucide-react', '@iconify/react']
+        }
+      }
+    }
   }
 });

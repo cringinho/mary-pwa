@@ -4,10 +4,10 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [couple, setCouple] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Verifica sessão ao inicializar
   useEffect(() => {
     async function checkAuth() {
       try {
@@ -15,8 +15,10 @@ export function AuthProvider({ children }) {
         if (res.ok) {
           const data = await res.json();
           setUser(data.user);
+          if (data.couple) setCouple(data.couple);
         } else {
           setUser(null);
+          setCouple(null);
         }
       } catch (err) {
         console.warn('Erro ao verificar sessão:', err);
@@ -42,7 +44,30 @@ export function AuthProvider({ children }) {
         throw new Error(data.error || 'Credenciais inválidas');
       }
       setUser(data.user);
+      if (data.couple) setCouple(data.couple);
       return data.user;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    }
+  }
+
+  async function register(payload) {
+    setError(null);
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Falha ao criar conta');
+      }
+      setUser(data.user);
+      if (data.couple) setCouple(data.couple);
+      return data;
     } catch (err) {
       setError(err.message);
       throw err;
@@ -59,6 +84,7 @@ export function AuthProvider({ children }) {
       console.warn('Erro ao fazer logout:', err);
     } finally {
       setUser(null);
+      setCouple(null);
     }
   }
 
@@ -98,9 +124,12 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider
       value={{
         user,
+        couple,
+        setCouple,
         loading,
         error,
         login,
+        register,
         logout,
         updateProfile,
         uploadAvatar

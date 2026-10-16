@@ -5,7 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { db } from '../db/index.js';
-import { memoryMedia, memories, users } from '../db/schema.js';
+import { memoryMedia, memories, users, customAlbums } from '../db/schema.js';
 import { eq, desc } from 'drizzle-orm';
 import { requireAuth } from '../middlewares/auth.js';
 import { sendPushToPartner } from '../pushService.js';
@@ -35,14 +35,16 @@ const router = express.Router();
 
 /**
  * GET /api/gallery
- * Retorna fotos da galeria com filtros
+ * Retorna fotos da galeria com filtros e álbuns personalizados do casal
  */
 router.get('/', requireAuth, (req, res) => {
   try {
+    const coupleId = req.user.coupleId || 1;
     const { month, albumName, isFavorite, type } = req.query;
 
     let allMedia = db.select({
       id: memoryMedia.id,
+      coupleId: memoryMedia.coupleId,
       memoryId: memoryMedia.memoryId,
       uploadedBy: memoryMedia.uploadedBy,
       albumName: memoryMedia.albumName,
@@ -64,6 +66,7 @@ router.get('/', requireAuth, (req, res) => {
       .from(memoryMedia)
       .leftJoin(users, eq(memoryMedia.uploadedBy, users.id))
       .leftJoin(memories, eq(memoryMedia.memoryId, memories.id))
+      .where(eq(memoryMedia.coupleId, coupleId))
       .orderBy(desc(memoryMedia.takenAt), desc(memoryMedia.id))
       .all();
 
@@ -82,14 +85,18 @@ router.get('/', requireAuth, (req, res) => {
       allMedia = allMedia.filter(m => Boolean(m.memoryId));
     }
 
-    const rawAlbums = db.select({ albumName: memoryMedia.albumName }).from(memoryMedia).all();
-    const albumSet = new Set(rawAlbums.map(a => a.albumName).filter(Boolean));
-    ['Nossas Fotos', 'Prints & Memes', 'Saídas', 'Gatinhos', 'Geral'].forEach(a => albumSet.add(a));
+    const coupleCustomAlbums = db.select().from(customAlbums).where(eq(customAlbums.coupleId, coupleId)).all();
+    const albumSet = new Set(coupleCustomAlbums.map(a => a.name).filter(Boolean));
+    allMedia.forEach(m => { if (m.albumName) albumSet.add(m.albumName); });
+    if (albumSet.size === 0) {
+      ['Nossas Fotos', 'Viagens & Passeios', 'Encontros Especiais', 'Geral'].forEach(a => albumSet.add(a));
+    }
 
     return res.json({
       success: true,
       media: allMedia,
-      albums: Array.from(albumSet)
+      albums: Array.from(albumSet),
+      customAlbums: coupleCustomAlbums
     });
   } catch (err) {
     console.error('[Gallery:Get] Erro ao listar galeria:', err);
@@ -136,6 +143,7 @@ router.post('/upload', requireAuth, upload.array('images', 15), async (req, res)
         .toFile(thumbPath);
 
       const insertResult = db.insert(memoryMedia).values({
+        coupleId: req.user.coupleId || 1,
         memoryId: null,
         uploadedBy: req.user.id,
         albumName: String(albumName).trim(),

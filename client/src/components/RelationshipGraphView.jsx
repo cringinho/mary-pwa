@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ReactFlow,
   Background,
@@ -6,13 +6,13 @@ import {
   Controls,
   useNodesState,
   useEdgesState,
+  addEdge,
   MarkerType
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import {
-  ShareNetwork, Sparkle, Plus, Books, FlowArrow,
-  Star, Heart, ArrowsClockwise, Tag, Info
+  ShareNetwork, Sparkle, Plus, FlowArrow
 } from '@phosphor-icons/react';
 import { Loader2 } from 'lucide-react';
 
@@ -32,7 +32,6 @@ export default function RelationshipGraphView({ onGoToMemory }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Estados dos modais e drawers
   const [selectedWord, setSelectedWord] = useState(null);
   const [isWordDrawerOpen, setIsWordDrawerOpen] = useState(false);
   const [selectedMemory, setSelectedMemory] = useState(null);
@@ -62,7 +61,6 @@ export default function RelationshipGraphView({ onGoToMemory }) {
     fetchGraphData();
   }, []);
 
-  // 1-Click approval de sugestão de palavra
   async function handleApproveSuggestion(suggested) {
     setApprovingWord(suggested.word);
     try {
@@ -87,7 +85,6 @@ export default function RelationshipGraphView({ onGoToMemory }) {
     }
   }
 
-  // Remoção de palavra do grafo
   async function handleDeleteWord(wordId) {
     try {
       const res = await fetch(`/api/graph/words/${wordId}`, {
@@ -102,17 +99,17 @@ export default function RelationshipGraphView({ onGoToMemory }) {
     }
   }
 
-  // Constrói nós e arestas com base no modo selecionado
+  // Constrói nós e arestas respeitando coordenadas salvas (positionX / positionY)
   useEffect(() => {
     if (!data) return;
 
     if (graphMode === 'memories') {
-      // MODO A: Constelação de Memórias (Orbitais)
       const memoryNodesList = (data.memoryNodes || []).map((m, idx) => {
+        const hasSavedPos = Number(m.positionX) !== 0 || Number(m.positionY) !== 0;
         const angle = (idx / Math.max(1, data.memoryNodes.length)) * Math.PI * 2;
         const radius = 220 + (idx % 3) * 60;
-        const x = 380 + Math.cos(angle) * radius;
-        const y = 280 + Math.sin(angle) * radius;
+        const x = hasSavedPos ? Number(m.positionX) : 380 + Math.cos(angle) * radius;
+        const y = hasSavedPos ? Number(m.positionY) : 280 + Math.sin(angle) * radius;
 
         return {
           id: m.id,
@@ -135,16 +132,15 @@ export default function RelationshipGraphView({ onGoToMemory }) {
       setNodes(memoryNodesList);
       setEdges(memoryEdgesList);
     } else {
-      // MODO B: Grafo de Palavras & Afetos (Palavras Centrais + Memórias)
       const registered = data.registeredWords || [];
       const memoriesMap = new Map((data.memoryNodes || []).map(m => [m.memoryId, m]));
 
-      // 1. Nós das Palavras (Hubs em círculo interno)
       const wordNodesList = registered.map((w, idx) => {
+        const hasSavedPos = Number(w.positionX) !== 0 || Number(w.positionY) !== 0;
         const angle = (idx / Math.max(1, registered.length)) * Math.PI * 2;
         const radius = 180 + (idx % 2) * 50;
-        const x = 400 + Math.cos(angle) * radius;
-        const y = 300 + Math.sin(angle) * radius;
+        const x = hasSavedPos ? Number(w.positionX) : 400 + Math.cos(angle) * radius;
+        const y = hasSavedPos ? Number(w.positionY) : 300 + Math.sin(angle) * radius;
 
         return {
           id: `word-${w.id}`,
@@ -154,16 +150,16 @@ export default function RelationshipGraphView({ onGoToMemory }) {
         };
       });
 
-      // 2. Nós das Memórias que contêm palavras (em círculo externo)
       const usedMemoryIds = new Set();
       registered.forEach(w => w.memoryIds.forEach(id => usedMemoryIds.add(id)));
 
       const memoryNodesList = Array.from(usedMemoryIds).map((memId, idx) => {
-        const m = memoriesMap.get(memId) || { memoryId: memId, title: `Relato #${memId}` };
+        const m = memoriesMap.get(memId) || { memoryId: memId, title: `Relato #${memId}`, positionX: 0, positionY: 0 };
+        const hasSavedPos = Number(m.positionX) !== 0 || Number(m.positionY) !== 0;
         const angle = (idx / Math.max(1, usedMemoryIds.size)) * Math.PI * 2;
         const radius = 380 + (idx % 2) * 80;
-        const x = 400 + Math.cos(angle) * radius;
-        const y = 300 + Math.sin(angle) * radius;
+        const x = hasSavedPos ? Number(m.positionX) : 400 + Math.cos(angle) * radius;
+        const y = hasSavedPos ? Number(m.positionY) : 300 + Math.sin(angle) * radius;
 
         return {
           id: `mem-${memId}`,
@@ -173,7 +169,6 @@ export default function RelationshipGraphView({ onGoToMemory }) {
         };
       });
 
-      // 3. Arestas conectando Palavras às Memórias
       const wordToMemEdges = [];
       registered.forEach(w => {
         w.memoryIds.forEach(memId => {
@@ -187,7 +182,6 @@ export default function RelationshipGraphView({ onGoToMemory }) {
         });
       });
 
-      // 4. Arestas tracejadas de co-ocorrência entre palavras
       const coOccurEdges = (data.wordCoOccurrences || []).map(e => ({
         id: e.id,
         source: e.source,
@@ -196,12 +190,101 @@ export default function RelationshipGraphView({ onGoToMemory }) {
         style: { stroke: '#F59E0B66', strokeWidth: 1, strokeDasharray: '3 3' }
       }));
 
+      const manualMemoryEdges = (data.memoryEdges || [])
+        .filter(e => usedMemoryIds.has(Number(String(e.source).replace(/^mem-/, ''))) && usedMemoryIds.has(Number(String(e.target).replace(/^mem-/, ''))))
+        .map(e => ({
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          type: 'smoothstep',
+          animated: true,
+          style: { stroke: '#EC4899', strokeWidth: 2, strokeDasharray: '4 4' }
+        }));
+
       setNodes([...wordNodesList, ...memoryNodesList]);
-      setEdges([...wordToMemEdges, ...coOccurEdges]);
+      setEdges([...wordToMemEdges, ...coOccurEdges, ...manualMemoryEdges]);
     }
   }, [data, graphMode]);
 
-  // Ao clicar em nó
+  // Conexão manual entre memórias via React Flow (Correção Definitiva Bug 2)
+  const onConnect = useCallback(async (params) => {
+    const isMemSource = String(params.source).startsWith('mem-');
+    const isMemTarget = String(params.target).startsWith('mem-');
+
+    setEdges((eds) =>
+      addEdge(
+        {
+          ...params,
+          type: 'smoothstep',
+          animated: true,
+          style: { stroke: '#EC4899', strokeWidth: 2, strokeDasharray: '4 4' },
+          markerEnd: { type: MarkerType.ArrowClosed, color: '#EC4899' }
+        },
+        eds
+      )
+    );
+
+    if (isMemSource && isMemTarget) {
+      try {
+        await fetch('/api/graph/connections', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            sourceMemoryId: params.source,
+            targetMemoryId: params.target,
+            label: 'Momento Conectado'
+          })
+        });
+      } catch (err) {
+        console.warn('Erro ao persistir conexão manual:', err);
+      }
+    }
+  }, [setEdges]);
+
+  // Salva posição do nó permanentemente ao soltar (Correção Definitiva Bug 2)
+  const onNodeDragStop = useCallback(async (event, node) => {
+    if (!node || !node.position) return;
+    const nodeType = node.type === 'wordNode' ? 'word' : 'memory';
+    const x = Math.round(node.position.x);
+    const y = Math.round(node.position.y);
+
+    // Atualiza estado local de data para manter posição ao alternar abas
+    setData((prev) => {
+      if (!prev) return prev;
+      if (nodeType === 'memory') {
+        return {
+          ...prev,
+          memoryNodes: (prev.memoryNodes || []).map(m =>
+            m.id === node.id ? { ...m, positionX: x, positionY: y } : m
+          )
+        };
+      }
+      return {
+        ...prev,
+        registeredWords: (prev.registeredWords || []).map(w =>
+          `word-${w.id}` === node.id ? { ...w, positionX: x, positionY: y } : w
+        )
+      };
+    });
+
+    try {
+      await fetch('/api/graph/node-position', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          nodeType,
+          id: node.id,
+          x,
+          y
+        })
+      });
+    } catch (err) {
+      console.warn('Erro ao salvar posição do nó:', err);
+    }
+  }, []);
+
   const onNodeClick = useCallback((event, node) => {
     if (node.type === 'wordNode') {
       setSelectedWord(node.data);
@@ -222,12 +305,11 @@ export default function RelationshipGraphView({ onGoToMemory }) {
             <div>
               <h2 className="text-base font-bold font-display text-white">Grafo do Nosso Universo</h2>
               <p className="text-[11px] text-pink-300/70 font-sans">
-                Constelação viva de relatos e afetos interligados
+                Constelação viva de relatos e afetos interligados (arraste nós ou conecte memórias!)
               </p>
             </div>
           </div>
 
-          {/* Botões de Ação */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsAddWordOpen(true)}
@@ -314,8 +396,12 @@ export default function RelationshipGraphView({ onGoToMemory }) {
             nodes={nodes}
             edges={edges}
             nodeTypes={nodeTypes}
+            nodesConnectable={true}
+            nodesDraggable={true}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodeDragStop={onNodeDragStop}
             onNodeClick={onNodeClick}
             fitView
             fitViewOptions={{ padding: 0.2 }}
@@ -336,18 +422,17 @@ export default function RelationshipGraphView({ onGoToMemory }) {
         {/* Legenda Flutuante */}
         <div className="absolute bottom-4 right-4 z-10 px-3 py-1.5 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 text-[10px] text-gray-300 font-sans space-y-0.5 pointer-events-none">
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-pink-500" />
-            <span>Mary</span>
-            <span className="w-2 h-2 rounded-full bg-purple-500 ml-1.5" />
-            <span>Leh</span>
+            <span className="w-2 h-2 rounded-full bg-rose-500" />
+            <span>Entrada</span>
+            <span className="w-2 h-2 rounded-full bg-amber-400 ml-1.5" />
+            <span>Saída (Arraste para ligar)</span>
           </div>
           <div className="text-[9px] text-gray-400">
-            Arraste, dê zoom e clique para explorar
+            Arraste nós para salvar posição no banco
           </div>
         </div>
       </div>
 
-      {/* Drawer de Detalhes da Palavra Selecionada */}
       <WordDetailDrawer
         word={selectedWord}
         isOpen={isWordDrawerOpen}
@@ -359,7 +444,6 @@ export default function RelationshipGraphView({ onGoToMemory }) {
         onGoToMemory={onGoToMemory}
       />
 
-      {/* Modal de Linha do Tempo / Evolução da Memória */}
       <MemoryTimelineModal
         memory={selectedMemory}
         connectedMemories={data?.memoryNodes?.filter(m => m.id !== selectedMemory?.id) || []}
@@ -371,7 +455,6 @@ export default function RelationshipGraphView({ onGoToMemory }) {
         onGoToMemory={onGoToMemory}
       />
 
-      {/* Modal de Cadastro Manual de Palavra */}
       <AddWordModal
         isOpen={isAddWordOpen}
         onClose={() => setIsAddWordOpen(false)}

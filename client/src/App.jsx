@@ -1,6 +1,5 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
-import { useTheme } from './hooks/useTheme';
 import LoginView from './components/LoginView';
 import CoupleHeader from './components/CoupleHeader';
 import DailyBibleVerseCard from './components/DailyBibleVerseCard';
@@ -14,38 +13,52 @@ import PhotoGalleryView from './components/PhotoGalleryView';
 import MonthlyRecapView from './components/MonthlyRecapView';
 import RelationshipGraphView from './components/RelationshipGraphView';
 import SettingsView from './components/SettingsView';
+import { MemoryFeedSkeleton } from './components/ShimmerSkeleton';
 import { initOfflineSync } from './services/offlineStorage';
 
 import {
   initSearchEngine, searchMemories, persistMemoriesToCache, loadMemoriesFromCache
 } from './services/searchEngine';
 import {
-  Sparkle, Plus, Images, ShareNetwork, SlidersHorizontal,
-  SignOut, Palette, HeartBreak, NotePencil, Database, ShieldCheck
+  Sparkle, Plus, HeartBreak
 } from '@phosphor-icons/react';
 
 export default function App() {
-  const { user, loading, logout } = useAuth();
-  const { theme, setTheme, themes } = useTheme();
+  const { user, loading } = useAuth();
 
   const [activeTab, setActiveTab] = useState('feed');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNewMemoryOpen, setIsNewMemoryOpen] = useState(false);
   const [initialMemoryContent, setInitialMemoryContent] = useState('');
 
+  const [coupleData, setCoupleData] = useState(null);
   const [memories, setMemories] = useState([]);
   const [loadingMemories, setLoadingMemories] = useState(true);
 
-  // Busca e Filtros Instantâneos
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
 
-  // 1. Carregamento de Relatos (Cache IndexedDB primeiro + Sync API)
+  // 1. Carrega dados do Casal (configurações, toggle de versículos, customizações)
+  useEffect(() => {
+    if (!user) return;
+    async function fetchCouple() {
+      try {
+        const res = await fetch('/api/couple', { credentials: 'include' });
+        if (res.ok) {
+          setCoupleData(await res.json());
+        }
+      } catch (err) {
+        console.warn('Erro ao buscar dados do casal:', err);
+      }
+    }
+    fetchCouple();
+  }, [user]);
+
+  // 2. Carregamento de Relatos (Cache IndexedDB primeiro + Sync API)
   useEffect(() => {
     if (!user) return;
 
     async function fetchMemories() {
-      // Tenta cache offline imediato do IndexedDB
       const cached = await loadMemoriesFromCache();
       if (cached && cached.length > 0) {
         setMemories(cached);
@@ -53,7 +66,6 @@ export default function App() {
         setLoadingMemories(false);
       }
 
-      // Sincroniza com o servidor
       try {
         const res = await fetch('/api/memories', { credentials: 'include' });
         if (res.ok) {
@@ -73,13 +85,12 @@ export default function App() {
 
     fetchMemories();
   }, [user]);
-  // Inicializa ouvinte para sincronização offline em segundo plano
+
   useEffect(() => {
     initOfflineSync(handleMemoryCreated);
   }, []);
 
-
-  // 2. Ação de Like Afetivo
+  // 3. Ação de Like Afetivo com Optimistic UI
   async function handleLike(memoryId, reaction = 'heart') {
     try {
       const res = await fetch(`/api/memories/${memoryId}/like`, {
@@ -101,7 +112,7 @@ export default function App() {
     }
   }
 
-  // 3. Ação de Excluir Relato
+  // 4. Ação de Excluir Relato
   async function handleDeleteMemory(memoryId) {
     if (!window.confirm('Tem certeza que deseja apagar este relato do Universo?')) {
       return;
@@ -125,22 +136,21 @@ export default function App() {
     }
   }
 
-  // 4. Transformar Versículo em Relato
   function handleTransformVerseToMemory(verse) {
     setInitialMemoryContent(`📖 "${verse.text}"\n— ${verse.reference}\n\nO que senti com esta palavra hoje:\n`);
     setIsNewMemoryOpen(true);
   }
 
-  // 5. Novo Relato Criado com Sucesso
   function handleMemoryCreated(newMemory) {
     setMemories(prev => {
-      const updated = [newMemory, ...prev];
+      const filtered = prev.filter(m => m.id !== newMemory.id);
+      const updated = [newMemory, ...filtered];
       initSearchEngine(updated);
       persistMemoriesToCache(updated);
       return updated;
     });
   }
-  // 6. Ir direto para um relato a partir de uma foto
+
   function handleGoToMemory(memoryId) {
     setActiveTab('feed');
     const target = memories.find(m => m.id === memoryId);
@@ -148,7 +158,6 @@ export default function App() {
       setSearchQuery(target.title);
     }
   }
-
 
   if (loading) {
     return (
@@ -163,42 +172,36 @@ export default function App() {
     return <LoginView />;
   }
 
-  // Filtragem com MiniSearch + Chips
+  // Filtragem com MiniSearch + Chips Dinâmicos
   let filteredMemories = searchMemories(searchQuery, memories);
 
   if (activeFilter === 'photos') {
-    filteredMemories = filteredMemories.filter(m => m.media && m.media.length > 0);
+    filteredMemories = filteredMemories.filter(m => Array.isArray(m.media) && m.media.length > 0);
   } else if (activeFilter === 'liked') {
-    filteredMemories = filteredMemories.filter(m => m.likes && m.likes.length > 0);
-  } else if (activeFilter === 'mary') {
-    filteredMemories = filteredMemories.filter(m => m.author?.username === 'mary');
-  } else if (activeFilter === 'leh') {
-    filteredMemories = filteredMemories.filter(m => m.author?.username === 'leh');
+    filteredMemories = filteredMemories.filter(m => Array.isArray(m.likes) && m.likes.length > 0);
+  } else if (activeFilter === 'me') {
+    filteredMemories = filteredMemories.filter(m => m.authorId === user.id);
+  } else if (activeFilter === 'partner') {
+    filteredMemories = filteredMemories.filter(m => m.authorId !== user.id);
   }
 
-  const words = [
-    { word: 'Cringinho', color: '#8B5CF6' },
-    { word: 'Maricota', color: '#EC4899' },
-    { word: 'Besties', color: '#F43F5E' },
-    { word: 'Promessa de Dedinho', color: '#A855F7' },
-    { word: 'Boleta Rodante', color: '#F59E0B' },
-    { word: 'Kuromi', color: '#9333EA' },
-    { word: 'Cinnamoroll', color: '#38BDF8' },
-    { word: 'Meu Amor', color: '#E11D48' },
-    { word: 'Protagonistas', color: '#10B981' }
-  ];
+  const showBibleVerses = Boolean(coupleData?.settings?.enableBibleVerses);
+  const meLabel = user.nickname || user.displayName || 'Meus Relatos';
+  const partnerLabel = coupleData?.partner?.nickname || coupleData?.partner?.displayName || 'Do Meu Amor';
 
   return (
     <div className="min-h-screen relative flex flex-col pb-24 selection:bg-pink-500 selection:text-white">
       <StarryCanvas />
-      <CoupleHeader onOpenProfile={() => setIsProfileOpen(true)} />
+      <CoupleHeader onOpenProfile={() => setIsProfileOpen(true)} coupleData={coupleData} />
 
       <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 space-y-6 relative z-10">
         {/* ABA 1: Início & Feed */}
         {activeTab === 'feed' && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Card de Versículo Bíblico Diário da Mary */}
-            <DailyBibleVerseCard onTransformToMemory={handleTransformVerseToMemory} />
+            {/* Card de Versículo Bíblico Diário (Exibido apenas quando ativado nos Ajustes - Item 14) */}
+            {showBibleVerses && (
+              <DailyBibleVerseCard onTransformToMemory={handleTransformVerseToMemory} />
+            )}
 
             {/* Barra de Pesquisa Instantânea + Botão de Criar Relato */}
             <div className="glass-panel p-4 rounded-3xl border border-pink-500/20 shadow-xl space-y-3">
@@ -210,6 +213,8 @@ export default function App() {
                     activeFilter={activeFilter}
                     onFilterChange={setActiveFilter}
                     totalCount={filteredMemories.length}
+                    meLabel={meLabel}
+                    partnerLabel={partnerLabel}
                   />
                 </div>
 
@@ -227,12 +232,9 @@ export default function App() {
               </div>
             </div>
 
-            {/* Lista da Timeline de Relatos */}
+            {/* Lista da Timeline de Relatos com Shimmer Skeletons */}
             {loadingMemories ? (
-              <div className="py-12 text-center text-xs text-gray-400 font-sans flex items-center justify-center gap-2">
-                <Sparkle weight="fill" className="w-4 h-4 text-pink-400 animate-spin" />
-                <span>Carregando relatos do nosso universo...</span>
-              </div>
+              <MemoryFeedSkeleton />
             ) : filteredMemories.length > 0 ? (
               <div className="space-y-6">
                 {filteredMemories.map((m) => (
@@ -283,7 +285,11 @@ export default function App() {
 
         {/* ABA 5: Ajustes */}
         {activeTab === 'settings' && (
-          <SettingsView onOpenProfile={() => setIsProfileOpen(true)} />
+          <SettingsView
+            onOpenProfile={() => setIsProfileOpen(true)}
+            coupleData={coupleData}
+            onCoupleUpdated={setCoupleData}
+          />
         )}
       </main>
 
@@ -298,6 +304,8 @@ export default function App() {
         onCreated={handleMemoryCreated}
         existingMemories={memories}
         initialContent={initialMemoryContent}
+        customMoods={coupleData?.customizations?.moods || []}
+        customTags={coupleData?.customizations?.tags || []}
       />
     </div>
   );
